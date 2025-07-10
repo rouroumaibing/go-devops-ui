@@ -11,6 +11,9 @@ declare module '@element-plus/icons-vue' {
   export const ArrowUp: Component
   export const Check: Component
   export const Plus: Component
+  export const Edit: Component
+  export const Search: Component
+
 }
 
 declare module '@element-plus/icons-vue/*' {

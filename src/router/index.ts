@@ -12,7 +12,11 @@ const routes: Array<RouteRecordRaw> = [
       children: [
         { path: 'list', component: () => import('@/views/pipeline/PipelineManage.vue'), meta: { title: '流水线列表' }},
         { path: 'component', component: () => import('@/views/pipeline/ComponentManage.vue'), meta: { title: '组件管理' }},
-        { path: 'environment', component: () => import('@/views/pipeline/EnvironmentManage.vue'), meta: { title: '环境管理' }}
+        { path: 'environment', component: () => import('@/views/pipeline/EnvironmentManage.vue'), meta: { title: '环境管理' }},
+        // 新增路由
+        { path: 'change', component: () => import('@/views/pipeline/ChangeManage.vue'), meta: { title: '变更' }},
+        { path: 'build', component: () => import('@/views/pipeline/BuildManage.vue'), meta: { title: '构建' }},
+        { path: 'product', component: () => import('@/views/pipeline/ProductManage.vue'), meta: { title: '产物管理' }}
       ]
     }
   ]}
