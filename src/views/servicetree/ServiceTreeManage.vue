@@ -45,9 +45,6 @@
         <div v-if="selectedComponent" class="component-detail">
           <div class="detail-header">
             <h2>{{ selectedComponent.label }} 详情</h2>
-            <el-button type="primary" @click="goToComponentPage">
-              <el-icon><Edit /></el-icon> 编辑组件
-            </el-button>
           </div>
 
           <el-divider></el-divider>
@@ -57,7 +54,11 @@
               <el-card>
                 <template #header><h3>基本信息</h3></template>
                 <el-descriptions :column="1">
-                  <el-descriptions-item label="组件名称">{{ selectedComponent.label }}</el-descriptions-item>
+                  <el-descriptions-item label="组件名称">
+                    <el-link type="primary" @click="goToComponentPage" style="cursor: pointer;">
+                      {{ selectedComponent.label }}
+                    </el-link>
+                  </el-descriptions-item>
                   <el-descriptions-item label="服务树">{{ getServicePath(selectedComponent) }}</el-descriptions-item>
                   <el-descriptions-item label="创建人">admin</el-descriptions-item>
                   <el-descriptions-item label="创建时间">2023-07-15</el-descriptions-item>
@@ -112,17 +113,13 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, reactive, toRefs, watch, onBeforeUnmount } from 'vue'
-import { ComponentPublicInstance } from 'vue'
+import { ref, onMounted, reactive, toRefs, watch, onBeforeUnmount, ComponentPublicInstance} from 'vue'
 import axios from '@/utils/axios'
 import { ElMessage } from 'element-plus'
-import { Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ElTreeV2, TreeNodeData, ElInput, ElButton, ElIcon, ElEmpty, ElLoading, ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
 
-// Element Plus 组件导入
-import { ElTreeV2, TreeNodeData } from 'element-plus'
-import { ElInput, ElButton, ElIcon, ElEmpty, ElLoading, ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
-
-// 类型定义
 interface TreeItem {
   id: string
   label: string
@@ -134,13 +131,13 @@ interface TreeItem {
   servicePath?: string
 }
 
-// 组件引用
 const treeRef = ref<ComponentPublicInstance<typeof ElTreeV2, { data: TreeItem[] }>>()
 const addNodeFormRef = ref<ComponentPublicInstance<typeof ElForm>>()
 const treeContainer = ref<HTMLDivElement | null>(null)
 const treeHeight = ref(0)
+const router = useRouter()
+const route = useRoute()
 
-// 动态计算树高度
 const updateTreeHeight = () => {
   if (treeContainer.value) {
     // 减去搜索框和边距高度
@@ -216,30 +213,28 @@ const handleNodeClick = (data: TreeItem) => {
 const getServicePath = (node: TreeItem): string => {
   if (!treeRef.value) return node.label
   
-  // 获取当前节点对象
   const treeNode = treeRef.value.getNode(node.id)
   if (!treeNode) return node.label
   
-  // 收集路径节点
   const pathNodes = []
   let currentNode = treeNode
   
-  // 遍历父节点直到根节点
   while (currentNode) {
     pathNodes.push(currentNode.data.label)
     currentNode = currentNode.parent
   }
   
-  // 反转路径并拼接
   return pathNodes.reverse().join(' > ')
 }
 
-// 跳转至组件详情页
 const goToComponentPage = () => {
   if (selectedComponent.value) {
-    // 实际应用中应使用路由跳转
+
     ElMessage.success(`跳转到 ${selectedComponent.value.label} 的编辑页面`)
-    // router.push(`/pipeline/component/${selectedComponent.value.id}`)
+
+    if (selectedComponent.value) {
+      router.push({ path: '/service', query: { ...route.query, componentId: selectedComponent.value.id } })
+    }
   }
 }
 
@@ -465,6 +460,18 @@ onBeforeUnmount(() => {
 }
 
 .el-tree-node:hover .add-node-btn {
+  opacity: 1;
+}
+/* 添加编辑图标样式 */
+.edit-icon {
+  margin-left: 8px;
+  color: #409eff;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 14px;
+}
+
+.el-descriptions-item__content:hover .edit-icon {
   opacity: 1;
 }
 </style>

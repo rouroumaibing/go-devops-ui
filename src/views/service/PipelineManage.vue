@@ -271,8 +271,8 @@ const handleNodeClick = (data: unknown, node: TreeNode, e: MouseEvent) => {
 </script>
 
 <style scoped>
-.pipeline-orchestration-container { padding: 20px; }
-.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+.pipeline-orchestration-container { padding: 0; }
+.card-header { margin-bottom: 15px; }
 .search-container { display: flex; flex-direction: column; } /* 添加display:flex确保垂直排列 */
 .table-skeleton { width: 100%; height: 400px; }
 </style>

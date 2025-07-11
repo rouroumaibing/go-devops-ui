@@ -13,26 +13,10 @@
           <el-icon><HomeFilled /></el-icon>
           <span>控制台</span>
         </el-menu-item>
-       <el-sub-menu index="/serviceTree"> 
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>服务树管理</span>
-          </template>
-          <el-menu-item index="/serviceTree">服务树管理</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu index="/pipeline">
-          <template #title>
-            <el-icon><Setting /></el-icon>
-            <span>流水线管理</span>
-          </template>
-          <el-menu-item index="/pipeline/list">流水线列表</el-menu-item>
-          <el-menu-item index="/pipeline/component">组件管理</el-menu-item>
-          <el-menu-item index="/pipeline/environment">环境管理</el-menu-item>
-          <!-- 新增菜单项 -->
-          <el-menu-item index="/pipeline/change">变更</el-menu-item>
-          <el-menu-item index="/pipeline/build">构建</el-menu-item>
-          <el-menu-item index="/pipeline/product">产物管理</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="/serviceTree">
+          <el-icon><Setting /></el-icon>
+          <span>服务树管理</span>
+        </el-menu-item>
         <el-sub-menu index="/user">
           <template #title>
             <el-icon><UserFilled /></el-icon>
