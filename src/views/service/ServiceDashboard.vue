@@ -1,10 +1,5 @@
 <template>
   <el-card class="pipeline-dashboard-container">
-    <template #header>
-    <div class="card-header">
-        <h2>组件管理</h2>
-    </div>
-    </template>
     <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
       <el-tab-pane label="组件管理" name="component">
         <ComponentManage />
@@ -48,14 +43,12 @@ const route = useRoute();
 const router = useRouter();
 
 onMounted(() => {
-  // 从路由参数中获取当前选项卡名称
   const tabName = route.query.tab as TabPaneName;
   if (tabName) {
     activeTab.value = String(tabName);
   }
 });
 const handleTabChange = (tabName: TabPaneName) => {
-  // 更新路由参数以保持选项卡状态
   router.push({ path: route.path, query: { ...route.query, tab: String(tabName) } });
 };
 </script>

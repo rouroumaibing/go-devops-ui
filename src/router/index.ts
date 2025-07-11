@@ -5,7 +5,16 @@ const routes: Array<RouteRecordRaw> = [
   { path: '/', component: MainLayout, children: [
     { path: 'dashboard', component: () => import('@/views/dashboard/Dashboard.vue'), meta: { title: '控制台', icon: 'HomeFilled' }},
     { path: 'serviceTree', component: () => import('@/views/servicetree/ServiceTreeManage.vue'), meta: { title: '服务树管理', icon: 'HomeFilled' }},
-    { path: 'user', component: () => import('@/views/user/UserManage.vue'), meta: { title: '用户管理', icon: 'UserFilled' }},
+    { 
+      path: 'user', 
+      component: () => import('@/views/user/UserDashboard.vue'), 
+      meta: { title: '用户管理', icon: 'UserFilled' },
+      children: [
+        { path: 'list', component: () => import('@/views/user/UserManage.vue'), meta: { title: '用户列表' }},
+        { path: 'group', component: () => import('@/views/user/UserGroupManage.vue'), meta: { title: '用户组管理' }},
+        { path: 'permission', component: () => import('@/views/user/PermissionManage.vue'), meta: { title: '权限管理' }}
+      ]
+    },
     { path: 'userGroup', component: () => import('@/views/user/UserGroupManage.vue'), meta: { title: '用户组管理', icon: 'UserFilled' }},
     { path: 'permission', component: () => import('@/views/user/PermissionManage.vue'), meta: { title: '权限管理', icon: 'UserFilled' }},
     { path: 'service', component: () => import('@/views/service/ServiceDashboard.vue'), meta: { title: '服务管理', icon: 'Setting' },

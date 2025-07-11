@@ -17,15 +17,10 @@
           <el-icon><Setting /></el-icon>
           <span>服务树管理</span>
         </el-menu-item>
-        <el-sub-menu index="/user">
-          <template #title>
-            <el-icon><UserFilled /></el-icon>
-            <span>用户管理</span>
-          </template>
-          <el-menu-item index="/user">用户列表</el-menu-item>
-          <el-menu-item index="/userGroup">用户组管理</el-menu-item>
-          <el-menu-item index="/permission">权限管理</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="/user">
+          <el-icon><UserFilled /></el-icon>
+          <span>用户管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
