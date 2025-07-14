@@ -11,7 +11,7 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <div class="tree-container" ref="treeContainer">
+        <div class="tree-container service-tree" ref="treeContainer">
           <el-tree-v2
             :height="treeHeight"
             ref="treeRef"

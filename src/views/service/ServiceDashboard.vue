@@ -7,9 +7,6 @@
       <el-tab-pane label="流水线管理" name="manage">
         <PipelineManage />
       </el-tab-pane>
-      <el-tab-pane label="任务管理" name="job">
-        <PipelineJob />
-      </el-tab-pane>
       <el-tab-pane label="环境管理" name="environment">
         <EnvironmentManage />
       </el-tab-pane>
@@ -36,7 +33,6 @@ import EnvironmentManage from './EnvironmentManage.vue';
 import BuildManage from './BuildManage.vue';
 import ChangeManage from './ChangeManage.vue';
 import ProductManage from './ProductManage.vue';
-import PipelineJob from './PipelineJob.vue';
 
 const activeTab = ref('component');
 const route = useRoute();
