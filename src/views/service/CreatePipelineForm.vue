@@ -1,380 +1,474 @@
 <template>
-  <div class="create-form-container">
-    <el-form ref="pipelineForm" :model="formData" label-width="120px" class="form-container">
-      <el-form-item label="流水线名称" prop="name" :rules="[{ required: true, message: '请输入流水线名称', trigger: 'blur' }]">
-        <el-input v-model="formData.name" placeholder="请输入流水线名称"></el-input>
-      </el-form-item>
+  <div class="create-pipeline-container">
+    <el-card class="form-card">
+      <div slot="header" class="card-header">
+        <h2>创建新流水线</h2>
+        <p>配置流水线的基本信息和执行步骤</p>
+      </div>
 
-      <el-form-item label="流水线类型" prop="type" :rules="[{ required: true, message: '请选择流水线类型', trigger: 'change' }]">
-        <el-select v-model="formData.type" placeholder="请选择流水线类型">
-          <el-option label="构建流水线" value="build"></el-option>
-          <el-option label="部署流水线" value="deploy"></el-option>
-          <el-option label="测试流水线" value="test"></el-option>
-        </el-select>
-      </el-form-item>
+      <el-form ref="pipelineForm" :model="formData" :rules="formRules" label-width="120px">
+        <!-- 基本信息区域 -->
+        <el-form-item label="流水线名称" prop="name">
+          <el-input v-model="formData.name" placeholder="请输入流水线名称" maxLength="50"></el-input>
+        </el-form-item>
 
-      <el-form-item label="流水线分组" prop="group" :rules="[{ required: true, message: '请选择流水线分组', trigger: 'change' }]">
-        <el-select v-model="formData.group" placeholder="请选择流水线分组">
-          <el-option label="后端服务" value="backend"></el-option>
-          <el-option label="前端应用" value="frontend"></el-option>
-          <el-option label="移动应用" value="mobile"></el-option>
-        </el-select>
-      </el-form-item>
+        <el-form-item label="流水线描述">
+          <el-input type="textarea" v-model="formData.description" placeholder="请输入流水线描述" :rows="3"></el-input>
+        </el-form-item>
 
-      <!-- 高级选项文本标题 -->
-      <el-form-item>
-        <div class="advanced-options-title">高级选项：</div>
-        <div class="pipeline-container">
-          <div class="pipeline-scroll">
-            <!-- 阶段间连接线容器 -->
-            <div class="connectors">
-              <div class="stage-connector" v-for="i in PIPELINE_STAGES.length - 1" :key="'connector' + i"></div>
-              <div class="flow-animation"></div>
-            </div>
+        <el-form-item label="流水线类型" prop="type">
+          <el-select v-model="formData.type" placeholder="请选择流水线类型">
+            <el-option label="构建流水线" value="build"></el-option>
+            <el-option label="部署流水线" value="deploy"></el-option>
+            <el-option label="综合流水线" value="combined"></el-option>
+          </el-select>
+        </el-form-item>
 
-            <!-- 阶段前添加按钮 -->
-            <div class="add-stage-btn" @click="handleAddStageBetween(0)">
-              <div class="add-button">+</div>
-            </div>
-
-            <!-- 流水线阶段 -->
-            <template v-for="(stage, index) in PIPELINE_STAGES" :key="stage.key">
-              <div class="stage">
-                <div class="stage-header">
-                  <div class="stage-icon">
-                    <el-icon v-if="stage.key === 'build'">
-                      <Cogs />
-                    </el-icon>
-                    <el-icon v-if="stage.key === 'test'">
-                      <CheckCircle />
-                    </el-icon>
-                    <el-icon v-if="stage.key === 'deploy'">
-                      <Rocket />
-                    </el-icon>
-                  </div>
-                  <div class="stage-title-content">
-                    <h3>{{ stage.title }}</h3>
-                    <div class="stage-actions">
-                      <el-button type="text" size="small" class="edit-btn" @click="handleStepEdit(stage.key)">
-                        <el-icon><Edit /></el-icon>编辑
-                      </el-button>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 子步骤列表 -->
-                <div class="stage-content">
-                  <div v-for="(step, idx) in stage.subSteps" :key="idx" class="step">
-                    <div class="step-icon">
-                      <el-icon><Cube /></el-icon>
-                    </div>
-                    <div class="step-content">
-                      <h4>{{ step }}</h4>
-                      <p class="step-desc">子步骤 {{ idx + 1 }}: {{ step }}</p>
-                    </div>
-                    <div class="status-badge active" v-if="idx === stage.subSteps.length - 1">
-                      已完成
-                    </div>
-                    <!-- 步骤间连接线 -->
-                    <div class="step-connector" v-if="idx < stage.subSteps.length - 1"></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 阶段间添加按钮 -->
-              <div class="add-stage-btn" @click="handleAddStageBetween(index + 1)">
-                <div class="add-button">+</div>
-              </div>
-            </template>
+        <!-- 阶段配置区域 -->
+        <el-form-item>
+          <div class="section-title">
+            <h3>流水线阶段配置</h3>
+            <el-button type="primary" size="small" @click="addStage">
+              <el-icon><Plus /></el-icon>
+            </el-button>
           </div>
-        </div>
-      </el-form-item>
-    </el-form>
 
-    <div class="form-actions">
-      <el-button @click="onCancel">返回</el-button>
-      <el-button type="primary" @click="onSave(false)">保存</el-button>
-      <el-button type="success" @click="onSave(true)">保存并返回</el-button>
-    </div>
+          <!-- 流水线流程图容器 -->
+          <div class="pipeline-container">
+            <div class="pipeline-scroll">
+              <!-- 连接线容器 -->
+              <div class="connectors">
+                <!-- 阶段间连接线 -->
+                <div v-for="(connector, index) in stageConnectors" :key="'connector-'+index"
+                     class="stage-connector" :style="{ left: connector.left + 'px', width: connector.width + 'px' }"></div>
+                
+              </div>
+
+              <!-- 流水线阶段 -->
+              <template v-for="(stage, index) in formData.stages" :key="stage.id">
+                <div class="stage" :class="'stage-' + ((index % 4) + 1)">
+                  <div class="stage-header">
+                    <div class="stage-title-content">
+                      <el-input v-model="stage.name" placeholder="请输入阶段名称" class="stage-title-input"></el-input>
+                      <div class="stage-actions">
+                        <el-button type="text" size="small" @click="addStep(index)">
+                            <el-icon><Plus /></el-icon>
+                        </el-button>
+                        <el-button type="text" size="small" @click="removeStage(index)" v-if="formData.stages.length > 1">
+                            <el-icon><Minus /></el-icon>
+                        </el-button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 子步骤列表 -->
+                  <div class="stage-content">
+                    <div v-for="(step, stepIndex) in stage.steps" :key="step.id" class="step">
+                      <!-- 删除步骤图标 -->
+                      <div class="step">
+                        <!-- <div class="step-icon">
+                          <el-icon><Cube /></el-icon>
+                        </div> -->
+                        <div class="step-content">
+                          <el-input v-model="step.name" placeholder="请输入步骤名称" class="step-name-input"></el-input>
+                          <p class="step-desc">步骤 {{ stepIndex + 1 }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 添加阶段按钮 -->
+                <div class="add-stage" v-if="index < formData.stages.length - 1" @click="addStageAtPosition(index + 1)">
+                  <el-icon><Plus /></el-icon>
+                </div>
+              </template>
+
+              <!-- 末尾添加阶段按钮 -->
+              <div class="add-stage" @click="addStageAtPosition(formData.stages.length)">
+                <el-icon><Plus /></el-icon>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
+      </el-form>
+
+      <div class="form-actions">
+        <el-button @click="handleCancel">取消</el-button>
+        <el-button type="primary" @click="handleSubmit">提交</el-button>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { FormInstance } from 'element-plus';
-import { ref, reactive, defineProps, defineEmits } from 'vue';
+import { ref, reactive, nextTick, onMounted, watch } from 'vue';
+import { FormInstance, FormRules, ElMessage } from 'element-plus';
+import { Plus, Delete } from '@element-plus/icons-vue';
 
-const props = defineProps({
-  initialFormData: { type: Object, default: () => ({ name: '', type: '', group: '' }) },
-  componentId: { type: Number, default: 1 }
-});
+interface StageConnector {
+  left: number;
+  width: number;
+}
 
-const PIPELINE_STAGES = [
-  {
-    key: 'build',
-    title: '构建阶段',
-    subSteps: ['代码拉取', '依赖安装', '编译构建']
-  },
-  {
-    key: 'test',
-    title: '测试阶段',
-    subSteps: ['单元测试', '集成测试', '性能测试']
-  },
-  {
-    key: 'deploy',
-    title: '部署阶段',
-    subSteps: ['打包镜像', '推送仓库', '部署应用']
-  }
-]
-
-// Emits定义
-const emit = defineEmits(['cancel', 'save', 'edit-step','add-step', 'add-stage-between']);
-
-// 表单状态
-const formData = reactive({ ...props.initialFormData });
+const stageConnectors = ref<StageConnector[]>([]);
+// 表单引用
 const pipelineForm = ref<FormInstance>();
 
-// 核心方法
-const onCancel = () => emit('cancel');
-const onSave = async (redirectAfterSave: boolean) => {/* 保存逻辑 */};
-const handleStepEdit = (stepType: string) => emit('edit-step', stepType);
-
-// 添加新阶段方法
-const handleAddStageBetween = (position: number) => {
-  emit('add-stage-between', position);
-  // 可添加弹窗逻辑让用户输入新阶段信息
-};
-
-// 计算连接线位置（在onMounted或updated中调用）
-import { onMounted, nextTick } from 'vue';
-
-onMounted(() => {
-  updateConnectors();
+// 表单数据
+const formData = reactive<{
+  name: string;
+  description: string;
+  type: string;
+  stages: Array<{
+    id: string;
+    name: string;
+    steps: Array<{
+      id: string;
+      name: string;
+    }>
+  }>
+}>({
+  name: '',
+  description: '',
+  type: '',
+  stages: [
+    {
+      id: 'stage_' + Date.now(),
+      name: '',
+      steps: [
+        {
+          id: 'step_' + Date.now(),
+          name: ''
+        }
+      ]
+    }
+  ]
 });
 
+const formRules = reactive<FormRules>({
+  name: [
+    { required: true, message: '请输入流水线名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '名称长度应在2-50个字符之间', trigger: 'blur' }
+  ],
+  type: [
+    { required: true, message: '请选择流水线类型', trigger: 'change' }
+  ]
+});
+
+// 添加阶段
+const addStage = () => {
+  formData.stages.push({
+    id: 'stage_' + Date.now(),
+    name: '',
+    steps: [
+      {
+        id: 'step_' + Date.now(),
+        name: ''
+      }
+    ]
+  });
+};
+
+// 删除阶段
+const removeStage = (index: number) => {
+  formData.stages.splice(index, 1);
+};
+
+// 添加步骤
+const addStep = (stageIndex: number) => {
+  formData.stages[stageIndex].steps.push({
+    id: 'step_' + Date.now(),
+    name: ''
+  });
+};
+
+// 删除步骤
+const removeStep = (stageIndex: number, stepIndex: number) => {
+  formData.stages[stageIndex].steps.splice(stepIndex, 1);
+};
+
+// 提交表单
+const handleSubmit = async () => {
+  if (!pipelineForm.value) return;
+
+  try {
+    const valid = await pipelineForm.value.validate();
+    if (valid) {
+      // 这里添加表单提交逻辑
+      console.log('流水线数据:', formData);
+      // 提交成功后可以重定向或显示成功消息
+      ElMessage.success('流水线创建成功');
+    }
+  } catch (error) {
+    console.log('表单验证失败:', error);
+  }
+};
+
+// 取消操作
+const handleCancel = () => {
+  // 这里添加取消逻辑，如返回上一页
+  window.history.back();
+};
+
+// 添加带位置的阶段
+const addStageAtPosition = (position: number) => {
+  formData.stages.splice(position, 0, {
+    id: 'stage_' + Date.now(),
+    name: '',
+    steps: [
+      {
+        id: 'step_' + Date.now(),
+        name: ''
+      }
+    ]
+  });
+  // 更新连接线位置
+  nextTick(() => updateConnectors());
+};
+
+// 更新连接线位置
 const updateConnectors = () => {
+  const stages = document.querySelectorAll('.stage');
+  const connectors = document.querySelectorAll('.stage-connector');
+  
+  stages.forEach((stage, index) => {
+    if (index < stages.length - 1) {
+      const currentRect = stage.getBoundingClientRect();
+      const nextRect = stages[index + 1].getBoundingClientRect();
+      const connector = connectors[index] as HTMLElement;
+      
+      if (connector) {
+        connector.style.width = `${nextRect.left - currentRect.right}px`;
+      }
+    }
+  });
+};
+
+
+// 计算连接线位置
+const calculateConnectors = () => {
   nextTick(() => {
     const stages = document.querySelectorAll('.stage');
-    const connectors = document.querySelectorAll('.stage-connector');
+   const connectors: StageConnector[] = [];
     
     stages.forEach((stage, index) => {
       if (index < stages.length - 1) {
         const currentRect = stage.getBoundingClientRect();
         const nextRect = stages[index + 1].getBoundingClientRect();
-        const connector = connectors[index] as HTMLElement;
+        const pipelineElement = document.querySelector('.pipeline-scroll');
+        if (!pipelineElement) return;
+        const pipelineRect = pipelineElement.getBoundingClientRect();
         
-        if (connector) {
-          connector.style.left = `${currentRect.right}px`;
-          connector.style.width = `${nextRect.left - currentRect.right}px`;
-        }
+        connectors.push({
+          left: currentRect.right - pipelineRect.left,
+          width: nextRect.left - currentRect.right
+        });
       }
     });
+    
+    stageConnectors.value = connectors;
   });
 };
+
+// 在阶段变化时更新连接线
+watch(() => formData.stages, () => {
+  calculateConnectors();
+  nextTick(() => updateConnectors());
+
+}, { deep: true });
+
+onMounted(() => {
+  calculateConnectors();
+  nextTick(() => updateConnectors());
+});
+
 </script>
 
 <style scoped>
-.create-form-container { padding: 20px; position: relative; min-height: 400px; }
-.form-container {
-  max-width: none;
-  margin: 0;
-  width: 100%;
-}
-.form-actions { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; }
-
-.advanced-options-title {
-  font-size: 16px;
-  font-weight: bold;
-  margin: 20px 0 15px;
-  color: #303133;
-  padding-left: 0px;
+.create-pipeline-container {
+  padding: 20px;
 }
 
-/* 流水线样式 */
-.pipeline-container {
-  position: relative;
-  margin: 30px 0;
-  overflow-x: auto;
-  padding: 20px 0;
-}
-
-.pipeline-scroll {
-  display: flex;
-  min-width: min-content;
-  position: relative;
-  padding: 50px 0;
-}
-
-/* 阶段间连接线 */
-.connectors {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.stage-connector {
-  position: absolute;
-  height: 4px;
-  background: #e2e8f0;
-  top: 75px;
-  border-radius: 2px;
-  z-index: 1;
-}
-
-/* 流动动画效果 */
-.flow-animation {
-  position: absolute;
-  height: 4px;
-  background: linear-gradient(90deg, #909399, #606266);
-  top: 75px;
-  width: 0;
-  animation: flow 4s infinite;
-  border-radius: 2px;
-  z-index: 2;
-}
-
-@keyframes flow {
-  0% { width: 0; left: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { width: 100%; left: 0; opacity: 0; }
-}
-
-/* 添加阶段按钮 */
-.add-stage-btn {
-  position: relative;
-  min-width: 80px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  z-index: 3;
-  margin: 0 10px;
-}
-
-.add-button {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: #f2f3f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  font-size: 1.8rem;
-  font-weight: 300;
-  transition: all 0.3s ease;
-  border: 2px dashed #e5e6eb;
-}
-
-.add-button:hover {
-  background: #e5e6eb;
-  color: #606266;
-  transform: scale(1.1);
-  border-style: solid;
-}
-
-/* 阶段样式 */
-.stage {
-  position: relative;
-  min-width: 220px;
+.card-header {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+}
+
+.card-header h2 {
+  margin-bottom: 5px;
+  color: #1a1a1a;
+}
+
+.card-header p {
+  color: #666;
+  margin-bottom: 0;
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  z-index: 2;
+  margin-bottom: 15px;
+}
+
+.stages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stage-item {
+  width: 100%;
+}
+
+.stage-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .stage-header {
-  background: white;
-  padding: 15px 25px;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-  margin-bottom: 30px;
-  position: relative;
-  z-index: 3;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  transition: all 0.3s ease;
-  border-left: 4px solid #909399;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.stage-header:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+.stage-name-item {
+  flex: 1;
+  margin-bottom: 0;
 }
 
-/* 步骤样式 */
-.stage-content {
+.stage-steps {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  width: 100%;
-  position: relative;
-  padding: 10px 0 20px;
+  gap: 10px;
+  padding-left: 10px;
 }
 
-.step {
-  position: relative;
-  background: white;
-  border-radius: 12px;
-  padding: 12px 15px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-  display: flex;
-  align-items: center;
-  transition: all 0.3s ease;
-  z-index: 2;
+.step-item {
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
 }
 
-.step:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-}
-
-.step-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+.step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #409eff;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 12px;
-  color: white;
-  font-size: 16px;
-  background: linear-gradient(135deg, #909399, #606266);
+  font-size: 12px;
 }
 
-.step-content h4 {
-  font-size: 16px;
-  color: #2c3e50;
-  margin-bottom: 2px;
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 30px;
 }
 
-.step-desc {
-  color: #7f8c8d;
-  font-size: 13px;
+/* 统一灰色样式 */
+.stage {
+  background-color: #f5f5f5; /* 浅灰色背景 */
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 15px;
 }
 
-/* 步骤间连接线 */
-.step-connector {
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translateX(-50%);
-  height: 20px;
-  width: 2px;
-  background: #e2e8f0;
-  z-index: 1;
+.stage-header {
+  border-left: 4px solid #999; /* 灰色边框 */
+  padding-left: 15px;
+  margin-bottom: 15px;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .pipeline-scroll {
-    min-width: 800px;
-  }
-  .stage {
-    min-width: 200px;
-  }
+.step {
+  border-left: 3px solid #ccc; /* 浅灰色步骤边框 */
+  padding-left: 15px;
+  margin-bottom: 10px;
+  background-color: #fff; /* 白色步骤背景 */
 }
+
+/* 修改添加按钮为灰色 */
+.add-button {
+  width: 60px; 
+  height: 60px; 
+  border-radius: 50%; 
+  background: #999; /* 灰色背景 */
+  color: white; 
+  font-size: 2rem; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+  transition: all 0.3s ease; 
+}
+
+.add-button:hover {
+  background: #666; /* 深灰色悬停效果 */
+  transform: scale(1.1); 
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15); 
+}
+
+/* 修改连接线为灰色 */
+.stage-connector {
+  position: absolute; 
+  height: 4px; 
+  background-color: #ccc; /* 灰色连接线 */
+  top: 0; 
+}
+
+.pipeline-scroll {
+  display: flex;          /* 使用flex布局实现横向排列 */
+  flex-direction: row;   /* 横向排列子元素 */
+  min-width: 100%;       /* 确保容器宽度至少为100% */
+  padding: 20px 0;       /* 上下 padding */
+  position: relative;    /* 为连接线提供定位上下文 */
+  overflow-x: auto;      /* 当内容超出时显示水平滚动条 */
+  overflow-y: hidden;    /* 隐藏垂直滚动条 */
+}
+
+/* 阶段样式调整 */
+.stage {
+  min-width: 280px;      /* 固定阶段宽度 */
+  margin-right: 30px;    /* 阶段之间的间距 */
+  flex-shrink: 0;        /* 防止阶段被压缩 */
+}
+
+/* 连接线容器样式 */
+.connectors {
+  position: absolute;     /* 绝对定位 */
+  top: 85px;              /* 垂直居中对齐阶段标题 */
+  left: 0;                /* 左对齐 */
+  right: 0;               /* 右对齐 */
+  height: 4px;            /* 连接线高度 */
+  z-index: 1;             /* 确保连接线在阶段下方 */
+  pointer-events: none;   /* 让连接线不阻挡交互 */
+}
+
+/* 阶段连接线样式 */
+.stage-connector {
+  position: absolute;     /* 绝对定位 */
+  height: 4px;            /* 连接线高度 */
+  background-color: #e5e7eb; /* 连接线颜色 */
+  top: 0;                 /* 顶部对齐 */
+}
+
+/* 添加阶段按钮样式调整 */
+.add-stage {
+  margin: 0 15px;         /* 按钮间距 */
+  display: flex;          /* 使用flex布局 */
+  align-items: center;    /* 垂直居中 */
+  justify-content: center; /* 水平居中 */
+  flex-shrink: 0;         /* 防止按钮被压缩 */
+}
+.add-button { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #9f7aea, #6b46c1); color: white; font-size: 2rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(107, 70, 193, 0.3); transition: all 0.3s ease; }
+.add-button:hover { transform: scale(1.1); box-shadow: 0 12px 25px rgba(107, 70, 193, 0.4); }
+
 </style>

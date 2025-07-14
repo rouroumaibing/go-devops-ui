@@ -15,6 +15,7 @@ declare module '@element-plus/icons-vue' {
   export const Search: Component
   export const ArrowLeft: Component
   export const Operation: Component
+  export const Delete: Component
 
 }
 
