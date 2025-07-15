@@ -27,12 +27,12 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { TabPaneName } from 'element-plus';
-import ComponentManage from './ComponentManage.vue';
-import PipelineManage from './PipelineManage.vue';
-import EnvironmentManage from './EnvironmentManage.vue';
-import BuildManage from './BuildManage.vue';
-import ChangeManage from './ChangeManage.vue';
-import ProductManage from './ProductManage.vue';
+import ComponentManage from './component/ComponentManage.vue';
+import PipelineManage from './pipeline/PipelineManage.vue';
+import EnvironmentManage from './environment/EnvironmentManage.vue';
+import BuildManage from './build/BuildManage.vue';
+import ChangeManage from './change/ChangeManage.vue';
+import ProductManage from './product/ProductManage.vue';
 
 const activeTab = ref('component');
 const route = useRoute();

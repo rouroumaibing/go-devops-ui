@@ -17,15 +17,23 @@
           </el-select>
 
         </el-form-item>
-          <el-button :icon="CirclePlus" circle />
-          <template v-for="action in PIPELINE_ACTIONS" :key="action.name">
+          <el-button :icon="CirclePlus" circle @click="handleAddAction(0)"/>
+          <template v-for="(action, index) in pipelineActions" :key="action.name">
             <el-button size="large" round text bg>{{ action.name }}
             <el-icon><EditPen /></el-icon>
             <el-icon><Operation /></el-icon>
             </el-button>
-            <el-button :icon="CirclePlus" circle />
+            <el-button :icon="CirclePlus" circle @click="handleAddAction(index + 1)" />
           </template>
         </el-form>
+          <PipelineNode
+            :visible="showAddActionDialog"
+            :title="dialogTitle"
+            :action-name="newActionName"
+            @update:visible="(value: boolean) => showAddActionDialog = value"
+            @confirm="confirmAddAction"
+            @cancel="handleDialogCancel"
+          ></PipelineNode>
 
       <div class="form-actions">
         <el-button @click="handleCancel">取消</el-button>
@@ -36,14 +44,47 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { CirclePlus, EditPen, Operation } from '@element-plus/icons-vue';
+import PipelineNode from './PipelineNode.vue';
 
-const PIPELINE_ACTIONS = [
+const router = useRouter();
+
+const pipelineActions = ref([
   { name: '构建' },
   { name: '测试' },
   { name: '部署' }
-];
+]);
+
+const currentInsertIndex = ref(0);
+const showAddActionDialog = ref(false);
+const newActionName = ref('');
+const dialogTitle = ref('添加新操作');
+
+// 添加新操作的处理函数
+const handleAddAction = (index: number) => {
+  currentInsertIndex.value = index;
+  showAddActionDialog.value = true;
+  newActionName.value = ''; 
+};
+// 确认添加新操作
+const confirmAddAction = (newActionName: string) => {
+
+  if (!newActionName.trim()) {
+    ElMessage.error('请输入操作名称');
+    return;
+  }
+
+  // 添加新操作到数组
+  pipelineActions.value.splice(currentInsertIndex.value, 0, {
+    name: newActionName.trim()
+  });
+
+  showAddActionDialog.value = false;
+  ElMessage.success('操作添加成功');
+};
+
 
 // 表单引用
 const pipelineForm = ref<FormInstance>();
@@ -89,10 +130,13 @@ const handleSubmit = async () => {
 
 // 取消操作
 const handleCancel = () => {
-  // 这里添加取消逻辑，如返回上一页
-  window.history.back();
+  router.go(-1);
 };
 
+// 添加取消对话框的处理函数
+const handleDialogCancel = () => {
+  newActionName.value = '';
+};
 
 </script>
 

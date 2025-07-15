@@ -37,7 +37,7 @@
           </el-tree-v2>
         </div>
         <el-empty v-if="!loading && treeData.length === 0" description="暂无服务数据"></el-empty>
-        <el-loading v-if="loading" target=".service-tree" text="加载中..."></el-loading>
+        <el-loading v-if="loading" target="treeContainer" text="加载中..."></el-loading>
       </el-aside>
 
       <!-- 右侧详情面板 -->

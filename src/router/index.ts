@@ -19,12 +19,12 @@ const routes: Array<RouteRecordRaw> = [
     { path: 'permission', component: () => import('@/views/user/PermissionManage.vue'), meta: { title: '权限管理', icon: 'UserFilled' }},
     { path: 'service', component: () => import('@/views/service/ServiceDashboard.vue'), meta: { title: '服务管理', icon: 'Setting' },
       children: [
-        { path: 'component', component: () => import('@/views/service/ComponentManage.vue'), meta: { title: '组件管理' }},
-        { path: 'list', component: () => import('@/views/service/PipelineManage.vue'), meta: { title: '流水线列表' }},
-        { path: 'environment', component: () => import('@/views/service/EnvironmentManage.vue'), meta: { title: '环境管理' }},
-        { path: 'change', component: () => import('@/views/service/ChangeManage.vue'), meta: { title: '变更' }},
-        { path: 'build', component: () => import('@/views/service/BuildManage.vue'), meta: { title: '构建' }},
-        { path: 'product', component: () => import('@/views/service/ProductManage.vue'), meta: { title: '产物管理' }}
+        { path: 'component', component: () => import('@/views/service/component/ComponentManage.vue'), meta: { title: '组件管理' }},
+        { path: 'list', component: () => import('@/views/service/pipeline/PipelineManage.vue'), meta: { title: '流水线列表' }},
+        { path: 'environment', component: () => import('@/views/service/environment/EnvironmentManage.vue'), meta: { title: '环境管理' }},
+        { path: 'change', component: () => import('@/views/service/change/ChangeManage.vue'), meta: { title: '变更' }},
+        { path: 'build', component: () => import('@/views/service/build/BuildManage.vue'), meta: { title: '构建' }},
+        { path: 'product', component: () => import('@/views/service/product/ProductManage.vue'), meta: { title: '产物管理' }}
       ]
     }
   ]}
