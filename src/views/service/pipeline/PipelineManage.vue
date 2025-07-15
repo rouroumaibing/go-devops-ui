@@ -38,18 +38,13 @@
           <el-table v-if="selectedPipeline" :data="[selectedPipeline]" border stripe>
             <el-table-column type="index" label="序号" width="80"></el-table-column>
             <el-table-column prop="name" label="流水线名称" width="180"></el-table-column>
-            <el-table-column prop="project" label="所属项目" width="150"></el-table-column>
             <el-table-column prop="componentName" label="所属组件" width="180"></el-table-column>
             <el-table-column prop="serviceName" label="所属服务"></el-table-column>
-            <el-table-column prop="status" label="状态" width="120">
-              <template #default="{ row }">
-                <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status === 'active' ? '启用' : '禁用' }}</el-tag>
-              </template>
-            </el-table-column>
             <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
-            <el-table-column label="操作" width="200">
+            <el-table-column label="操作" width="250">
               <template #default="scope">
-                <el-button link @click="handleEdit(scope.row)">编辑</el-button>
+                <el-button type="primary" size="small" @click="handleRun(scope.row)">运行</el-button>
+                <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -72,8 +67,6 @@ import CreatePipelineForm from './CreatePipelineForm.vue';
 interface Pipeline {
   id: number;
   name: string;
-  project: string;
-  status: 'active' | 'disabled';
   createTime: string;
   componentId: number;
   componentName: string;
@@ -117,9 +110,10 @@ const handleApiError = (error: any, defaultData: any[], message: string) => {
 };
 
 const DEFAULT_PIPELINES: Pipeline[] = [
-  { id: 1, name: '后端构建流水线', project: '核心系统', status: 'active', createTime: '2023-07-15 10:30', componentId: 2, componentName: '组件B' },
-  { id: 2, name: '前端构建流水线', project: '用户平台', status: 'active', createTime: '2023-07-18 14:20', componentId: 1, componentName: '组件A' },
-  { id: 3, name: '通用测试流水线', project: '公共组件', status: 'active', createTime: '2023-07-20 09:15', componentId: 0, componentName: '未分类' }
+  { id: 1, name: 'alpha测试环境', createTime: '2023-07-15 10:30', componentId: 2, componentName: '组件B' },
+  { id: 2, name: 'beta测试环境', createTime: '2023-07-18 14:20', componentId: 1, componentName: '组件A' },
+
+  { id: 3, name: 'gamma测试环境', createTime: '2023-07-20 09:15', componentId: 0, componentName: '未分类' }
 ];
 
 const fetchPipelines = async (componentId?: number) => {
@@ -185,6 +179,11 @@ const handleEdit = (pipeline: Pipeline) => {
   // router.push(`/pipeline/edit/${pipeline.id}`);
 };
 
+const handleRun = (pipeline: Pipeline) => {
+  console.log('运行流水线:', pipeline);
+  // router.push(`/pipeline/run/${pipeline.id}`);
+};
+
 const handleStepEdit = (stepType: string) => {
   console.log(`编辑步骤: ${stepType}`);
   // 这里可以添加步骤编辑逻辑
@@ -197,7 +196,6 @@ const handleCancel = () => {
 
 const savePipeline = async () => {
   try {
-    // FIX: Use the component ref instead of the imported component
     await createPipelineFormRef.value?.pipelineForm?.validate();
     loading.value = true;
     error.value = '';
@@ -216,18 +214,15 @@ const savePipeline = async () => {
   }
 };
 
-// Add missing event handler
 const handleAddStageBetween = (index: number) => {
   console.log('Adding stage between index:', index);
-  // Add your stage insertion logic here
 };
-// 定义子组件暴露的属性类型
+
 interface CreatePipelineFormExposed {
   pipelineForm: InstanceType<typeof ElForm> | undefined;
   validateForm: () => Promise<boolean>;
 }
 
-// 更新组件引用类型，添加暴露的属性
 const createPipelineFormRef = ref<InstanceType<typeof CreatePipelineForm> & CreatePipelineFormExposed>();
 </script>
 

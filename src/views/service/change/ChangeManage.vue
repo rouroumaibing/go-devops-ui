@@ -1,6 +1,5 @@
 <template>
   <div class="change-manage">
-    <h1>变更管理</h1>
     <el-table :data="changeList">
       <el-table-column prop="id" label="变更编号"></el-table-column>
       <el-table-column prop="description" label="描述"></el-table-column>
@@ -15,6 +14,6 @@
 <script setup lang="ts">
 // 模拟数据
 const changeList = [
-  { id: 'C001', description: '初始版本', content: '创建项目结构', status: '已完成', creator: 'admin', updateTime: '2023-07-01 10:00' }
+  { id: 'C001', description: '初始版本', content: '创建项目结构', status: '已完成', creator: 'admin', updateTime: '2025-07-01 10:00' }
 ]
 </script>
