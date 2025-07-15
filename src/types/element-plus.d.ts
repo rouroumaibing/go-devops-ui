@@ -16,7 +16,8 @@ declare module '@element-plus/icons-vue' {
   export const ArrowLeft: Component
   export const Operation: Component
   export const Delete: Component
-
+  export const CirclePlus: Component
+  export const EditPen: Component
 }
 
 declare module '@element-plus/icons-vue/*' {
