@@ -4,7 +4,7 @@
       <el-button type="primary" icon="Plus" @click="enterCreateMode">创建流水线</el-button>
     </template>
     <div v-if="isCreateMode">
-      <CreatePipelineForm
+      <PipelineCreate
         v-if="isCreateMode"
         ref="createPipelineFormRef"
         :initial-form-data="{}"
@@ -61,7 +61,7 @@ import { ElMessage, ElForm } from 'element-plus';
 import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router';
 
-import CreatePipelineForm from './CreatePipelineForm.vue';
+import PipelineCreate from './PipelineCreate.vue';
 
 
 interface Pipeline {
@@ -223,7 +223,7 @@ interface CreatePipelineFormExposed {
   validateForm: () => Promise<boolean>;
 }
 
-const createPipelineFormRef = ref<InstanceType<typeof CreatePipelineForm> & CreatePipelineFormExposed>();
+const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
 </script>
 
 <style scoped>

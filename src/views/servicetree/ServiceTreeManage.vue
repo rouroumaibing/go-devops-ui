@@ -61,7 +61,7 @@
                   </el-descriptions-item>
                   <el-descriptions-item label="服务树">{{ getServicePath(selectedComponent) }}</el-descriptions-item>
                   <el-descriptions-item label="创建人">admin</el-descriptions-item>
-                  <el-descriptions-item label="创建时间">2023-07-15</el-descriptions-item>
+                  <el-descriptions-item label="创建时间">2025-07-15</el-descriptions-item>
                   <el-descriptions-item label="描述">
                     {{ selectedComponent.description || '暂无描述信息' }}
                   </el-descriptions-item>
@@ -167,20 +167,21 @@ const { query, treeData, loading, selectedComponent, addNodeDialogVisible, curre
 const props = { value: 'id', label: 'label', children: 'children' }
 
 // 数据获取
+// Data fetching
 const fetchServiceTree = async () => {
   try {
-    loading.value = true
-    const response = await axios.get('/api/services/tree')
-    treeData.value = response.data || []
+    loading.value = true;
+    // Use relative URL - will be proxied by Vite
+    const response = await axios.get('/api/servicetree');
+    treeData.value = response.data || [];
   } catch (error) {
-    ElMessage.error('获取服务树失败，请重试')
-    console.error('Service tree fetch error:', error)
-    // 使用默认数据作为回退
-    treeData.value = generateDefaultTree()
+    ElMessage.error('Failed to fetch service tree, please try again');
+    console.error('Service tree fetch error:', error);
+    treeData.value = generateDefaultTree();
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 // 搜索过滤逻辑
 const onQueryChanged = (query: string) => {

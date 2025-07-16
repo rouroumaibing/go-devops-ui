@@ -26,14 +26,14 @@
             <el-button :icon="CirclePlus" circle @click="handleAddAction(index + 1)" />
           </template>
         </el-form>
-          <PipelineNode
+          <PipelineStage
             :visible="showAddActionDialog"
             :title="dialogTitle"
             :action-name="newActionName"
             @update:visible="(value: boolean) => showAddActionDialog = value"
             @confirm="confirmAddAction"
             @cancel="handleDialogCancel"
-          ></PipelineNode>
+          ></PipelineStage>
 
       <div class="form-actions">
         <el-button @click="handleCancel">取消</el-button>
@@ -47,7 +47,7 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { CirclePlus, EditPen, Operation } from '@element-plus/icons-vue';
-import PipelineNode from './PipelineNode.vue';
+import PipelineStage from './PipelineStage.vue';
 
 const router = useRouter();
 
