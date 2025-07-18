@@ -26,6 +26,7 @@
               <div class="tree-node-content">
                 <span>{{ data.name }}</span>
                 <el-button
+                  v-if="data.node_type !== 'service'"
                   class="add-node-btn"
                   size="small"
                   icon="Plus"
@@ -36,7 +37,6 @@
           </el-tree-v2>
         </div>
         <el-empty v-if="!loading && treeData.length === 0" description="暂无服务数据"></el-empty>
-        <!-- 移除原有的el-loading组件 -->
       </el-aside>
 
       <!-- 右侧详情面板 -->
@@ -58,10 +58,10 @@
                       {{ componentDetail.name }}
                     </el-link>
                   </el-descriptions-item>
-                  <el-descriptions-item label="服务树">{{ componentDetail.serviceTree }}</el-descriptions-item>
+                  <el-descriptions-item label="服务树">{{ componentDetail.service_tree }}</el-descriptions-item>
                   <el-descriptions-item label="创建人">{{ componentDetail.owner }}</el-descriptions-item>
-                  <el-descriptions-item label="创建时间">{{ componentDetail.createAt }}</el-descriptions-item>
-                  <el-descriptions-item label="更新时间">{{ componentDetail.updateAt }}</el-descriptions-item>
+                  <el-descriptions-item label="创建时间">{{ componentDetail.created_at }}</el-descriptions-item>
+                  <el-descriptions-item label="更新时间">{{ componentDetail.updated_at }}</el-descriptions-item>
                   <el-descriptions-item label="描述">
                     {{ componentDetail.description || '暂无描述信息' }}
                   </el-descriptions-item>
@@ -74,9 +74,9 @@
                 <template #header><h3>代码库信息</h3></template>
                 <el-descriptions v-if="componentDetail" :column="1">
                   <el-descriptions-item label="代码库地址">
-                    <el-link :href="componentDetail.repoUrl" target="_blank">{{ componentDetail.repoUrl || '未设置' }}</el-link>
+                    <el-link :href="componentDetail.repo_url" target="_blank">{{ componentDetail.repo_url || '未设置' }}</el-link>
                   </el-descriptions-item>
-                  <el-descriptions-item label="分支">{{ componentDetail.repoBranch || 'main' }}</el-descriptions-item>
+                  <el-descriptions-item label="分支">{{ componentDetail.repo_branch || 'main' }}</el-descriptions-item>
                 </el-descriptions>
                 <div v-else class="empty-info">请选择一个服务组件查看详情</div>
               </el-card>
@@ -92,7 +92,7 @@
 
     <!-- 添加子节点对话框 -->
     <el-dialog v-model="addNodeDialogVisible" title="添加子节点" width="30%">
-      <el-form ref="addNodeFormRef" :model="newServiceTreeNodeForm" label-width="80px">
+      <el-form ref="addNodeFormRef" :model="newServiceTreeNodeForm" label-width="20%">
         <el-form-item label="节点名称" prop="name" :rules="[{ required: true, message: '请输入节点名称', trigger: 'blur' }]">
           <el-input v-model="newServiceTreeNodeForm.name" placeholder="请输入节点名称"></el-input>
         </el-form-item>
@@ -103,14 +103,36 @@
             <el-radio :value="'category'">同级类别</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="节点描述">
-          <el-input
-            v-model="newServiceTreeNodeForm.description"
-            placeholder="请输入节点描述"
-            type="textarea"
-            :rows="3"
-          ></el-input>
-        </el-form-item>
+        <!-- 当节点类型为service时显示代码库信息 -->
+        <template v-if="newServiceTreeNodeForm.node_type === 'service'">
+          <el-form-item label="代码库地址" prop="components.repo_url" :rules="[{ required: true, message: '请输入代码库地址', trigger: 'blur' }]">
+            <el-input v-model="newServiceTreeNodeForm.components.repo_url" placeholder="请输入代码库地址"></el-input>
+          </el-form-item>
+          <el-form-item label="代码库分支" prop="components.repo_branch" :rules="[{ required: true, message: '请输入代码库分支', trigger: 'blur' }]">
+            <el-input v-model="newServiceTreeNodeForm.components.repo_branch" placeholder="请输入代码库分支" defaultValue="main"></el-input>
+          </el-form-item>
+          <el-form-item label="责任人" prop="components.owner" :rules="[{ required: true, message: '请输入责任人', trigger: 'blur' }]">
+            <el-input v-model="newServiceTreeNodeForm.components.owner" placeholder="请输入创建人"></el-input>
+          </el-form-item>
+          <el-form-item label="微服务描述" prop="components.description" >
+            <el-input
+              v-model="newServiceTreeNodeForm.components.description"
+              placeholder="请输入微服务描述"
+              type="textarea"
+              :rows="3"
+            ></el-input>
+          </el-form-item>
+        </template>
+         <template v-if="newServiceTreeNodeForm.node_type != 'service'">
+          <el-form-item label="节点描述">
+            <el-input
+              v-model="newServiceTreeNodeForm.description"
+              placeholder="请输入节点描述"
+              type="textarea"
+              :rows="3"
+            ></el-input>
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -131,27 +153,27 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElTreeV2, TreeNodeData, ElInput, ElButton, ElIcon, ElEmpty,  ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
 
 interface treeItem {
-  id: number
+  id: string
   name: string
   full_path: string
-  node_type: 'category' | 'service' 
-  service_type?: string
-  parent_id?: number
+  node_type: 'category' | 'subcategory' | 'service' 
+  service_id?: string
+  parent_id?: string
   level: number
   description?: string
   children?: treeItem[]
 }
 
 interface componentData {
-  id: number;
+  id?: string;
   name: string;
-  serviceTree: string;
+  service_tree: string;
   owner: string;
   description?: string;
-  repoUrl?: string;
-  repoBranch?: string;
-  createAt?: string;
-  updateAt?: string;
+  repo_url: string;
+  repo_branch: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 const treeRef = ref<ComponentPublicInstance<typeof ElTreeV2, { data: treeItem[] }>>()
@@ -196,7 +218,7 @@ const fetchServiceTree = async () => {
   }
 };
 
-const fetchComponentDetail = async (id: number) => {
+const fetchComponentDetail = async (id: string) => {
   try {
     loading.value = true;
     const response = await axios.get(`/api/component/${id}`);
@@ -229,8 +251,8 @@ const filterMethod = (query: string, node: TreeNodeData) => {
 
 // 节点点击处理
 const handleNodeClick = async (data: treeItem) => {
-  if (data.node_type === 'service') {
-    const componentDetail = await fetchComponentDetail(data.id);
+    if (data.node_type === 'service' && data.service_id) {
+    const componentDetail = await fetchComponentDetail(data.service_id);
   }
 }
 
@@ -246,24 +268,35 @@ const goToComponentPage = () => {
 }
 
 // 保留ref版本的表单定义并确保命名唯一
-const newServiceTreeNodeForm = ref<{name: string; node_type: 'category' | 'service'; service_type?: string; description?: string}>({
+const newServiceTreeNodeForm = ref<{name: string; node_type: 'category' | 'subcategory' | 'service' ;  description?: string; components: componentData;}>({
   name: '',
   node_type: 'service',
-  service_type: undefined,
-  description: undefined
+  description: undefined,
+  components: {
+    name: '',
+    service_tree: '',
+    description: '',
+    owner: '',
+    repo_url: '',
+    repo_branch: 'main'
+  },
 });
 
-// 显示添加节点对话框
+// 显示添加节点对话框时初始化组件数据
 const showAddNodeDialog = (parentNode: treeItem) => {
   currentParentNode.value = parentNode;
-  // 重置表单数据
   newServiceTreeNodeForm.value = {
     name: '',
-    node_type: 'service',
-    service_type: undefined,
-    description: undefined
+    node_type: 'category',
+    description: undefined,
+    components: { 
+      name: '',
+      service_tree: '',
+      description: '',
+      owner: '',
+      repo_url: '',
+      repo_branch: 'main' }
   };
-  // 重置表单验证状态
   addNodeFormRef.value?.resetFields();
   addNodeDialogVisible.value = true;
 }
@@ -297,23 +330,47 @@ const addChildNode = async () => {
     description: newServiceTreeNodeForm.value.description,
   }
 
+  const newComponentData: Omit<componentData, 'id'> = {
+    name: newServiceTreeNodeForm.value.name,
+    service_tree: newNodeData.full_path,
+    description: newServiceTreeNodeForm.value.description,
+    owner: newServiceTreeNodeForm.value.components.owner,
+    repo_url: newServiceTreeNodeForm.value.components.repo_url,
+    repo_branch: newServiceTreeNodeForm.value.components.repo_branch,
+  }
+
   try {
     // 显示加载状态
     loading.value = true
+    if (newNodeData.node_type === 'service') {
+      const response = await axios.post('/api/component', newComponentData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      if (response.status !== 200) {
+        ElMessage.error('添加组件失败: HTTP状态码' + response.status)
+        return
+      }
+      newNodeData.service_id = response.data.id
+    }
     // 发送POST请求到/api/servicetree
-    const response = await axios.post('/api/servicetree', newNodeData, {
+    await axios.post('/api/servicetree', newNodeData, {
       headers: {
         'Content-Type': 'application/json'
       }
     })
+
     // 关闭对话框
     addNodeDialogVisible.value = false
     // 刷新服务树数据
     fetchServiceTree()
+    ElMessage.success('节点添加成功')
   } catch (error) {
     ElMessage.error('添加节点失败，请重试')
+    console.error('添加节点错误:', error)
   } finally {
-    // 隐藏加载状态
+    // 确保加载状态始终被重置
     loading.value = false
   }
 }
@@ -339,26 +396,28 @@ const generateDefaultTree = (): treeItem[] => [
     full_path: 'DevOps',
     node_type: 'category',
     level: 1,
-    parent_id: 0,
-    id: 0,
+    parent_id: '0',
+    id: '0',
+
     children: [ 
       {
         name: 'APP',
         full_path: 'DevOps/APP',
         node_type: 'category',
         level: 2,
-        parent_id: 0, // DevOps
-        id: 1,
+        parent_id: '0', // DevOps
+        id: '1',
+
         children: [ 
           {
             name: 'app-server',
             full_path: 'DevOps/APP/app-server',
             node_type: 'service',
-            service_type: 'app',
+            service_id: '3',
             level: 3,
-            parent_id: 1, // APP
+            parent_id: '1', // APP
             description: '应用后端服务',
-            id: 3,
+            id: '3',
             children: []
           }]
         },
