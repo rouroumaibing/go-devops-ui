@@ -10,14 +10,15 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <div class="tree-container service-tree" ref="treeContainer">
+        <div class="tree-container" ref="treeContainer"
+             v-loading="loading" element-loading-text="加载中..." element-loading-background="rgba(255, 255, 255, 0.8)">
           <el-tree-v2
-            :height="treeHeight"
+            :style="{ height: treeHeight + 'px' }"
             ref="treeRef"
             :data="treeData"
             :props="{ value: 'id', label: 'name', children: 'children' }"
             :filter-method="filterMethod"
-            @node-click="(data: TreeNodeData) => handleNodeClick(data as TreeItem)"
+            @node-click="(data: TreeNodeData) => handleNodeClick(data as treeItem)"
             :default-expanded-keys="expandedKeys"
             :indent="16"
           >
@@ -35,7 +36,7 @@
           </el-tree-v2>
         </div>
         <el-empty v-if="!loading && treeData.length === 0" description="暂无服务数据"></el-empty>
-        <el-loading v-if="loading" target="treeContainer" text="加载中..."></el-loading>
+        <!-- 移除原有的el-loading组件 -->
       </el-aside>
 
       <!-- 右侧详情面板 -->
@@ -59,8 +60,8 @@
                   </el-descriptions-item>
                   <el-descriptions-item label="服务树">{{ componentDetail.serviceTree }}</el-descriptions-item>
                   <el-descriptions-item label="创建人">{{ componentDetail.owner }}</el-descriptions-item>
-                  <el-descriptions-item label="创建时间">{{ componentDetail.createTime }}</el-descriptions-item>
-                  <el-descriptions-item label="更新时间">{{ componentDetail.updateTime }}</el-descriptions-item>
+                  <el-descriptions-item label="创建时间">{{ componentDetail.createAt }}</el-descriptions-item>
+                  <el-descriptions-item label="更新时间">{{ componentDetail.updateAt }}</el-descriptions-item>
                   <el-descriptions-item label="描述">
                     {{ componentDetail.description || '暂无描述信息' }}
                   </el-descriptions-item>
@@ -97,8 +98,9 @@
         </el-form-item>
         <el-form-item label="节点类型">
           <el-radio-group v-model="newServiceTreeNodeForm.node_type">
-            <el-radio :label="'service'">服务节点</el-radio>
-            <el-radio :label="'category'">分类节点</el-radio>
+            <el-radio :value ="'service'">微服务</el-radio>
+            <el-radio :value ="'subcategory'">子类别</el-radio>
+            <el-radio :value="'category'">同级类别</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="节点描述">
@@ -121,14 +123,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, reactive, toRefs,  onBeforeUnmount, ComponentPublicInstance} from 'vue'
+import { ref, onMounted, reactive, toRefs,  onBeforeUnmount, ComponentPublicInstance, nextTick } from 'vue'
 import axios from '@/utils/axios'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElTreeV2, TreeNodeData, ElInput, ElButton, ElIcon, ElEmpty, ElLoading, ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
+import { ElTreeV2, TreeNodeData, ElInput, ElButton, ElIcon, ElEmpty,  ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
 
-interface TreeItem {
+interface treeItem {
   id: number
   name: string
   full_path: string
@@ -137,10 +139,10 @@ interface TreeItem {
   parent_id?: number
   level: number
   description?: string
-  children?: TreeItem[]
+  children?: treeItem[]
 }
 
-interface ComponentData {
+interface componentData {
   id: number;
   name: string;
   serviceTree: string;
@@ -148,11 +150,11 @@ interface ComponentData {
   description?: string;
   repoUrl?: string;
   repoBranch?: string;
-  createTime?: string;
-  updateTime?: string;
+  createAt?: string;
+  updateAt?: string;
 }
 
-const treeRef = ref<ComponentPublicInstance<typeof ElTreeV2, { data: TreeItem[] }>>()
+const treeRef = ref<ComponentPublicInstance<typeof ElTreeV2, { data: treeItem[] }>>()
 const addNodeFormRef = ref<ComponentPublicInstance<typeof ElForm>>()
 const treeContainer = ref<HTMLDivElement | null>(null)
 const treeHeight = ref(0)
@@ -167,11 +169,11 @@ const updateTreeHeight = () => {
 
 const state = reactive({
   query: '',
-  treeData: [] as TreeItem[],
+  treeData: [] as treeItem[],
   loading: false,
-  componentDetail: null as ComponentData | null,
+  componentDetail: null as componentData | null,
   addNodeDialogVisible: false,
-  currentParentNode: null as TreeItem | null,
+  currentParentNode: null as treeItem | null,
   expandedKeys: [] as number[]
 })
 
@@ -188,7 +190,6 @@ const fetchServiceTree = async () => {
 
   } catch (error) {
     ElMessage.error('Failed to fetch service tree, please try again');
-    console.error('Service tree fetch error:', error);
     treeData.value = generateDefaultTree();
   } finally {
     loading.value = false;
@@ -219,7 +220,7 @@ const onQueryChanged = (query: string) => {
 }
 
 const filterMethod = (query: string, node: TreeNodeData) => {
-  const treeNode = node as unknown as { data: TreeItem };
+  const treeNode = node as unknown as { data: treeItem };
   if (!treeNode.data) return false;
   const matchesName = treeNode.data.name.toLowerCase().includes(query.toLowerCase());
   const matchesPath = treeNode.data.full_path?.toLowerCase().includes(query.toLowerCase()) || false;
@@ -227,7 +228,7 @@ const filterMethod = (query: string, node: TreeNodeData) => {
 }
 
 // 节点点击处理
-const handleNodeClick = async (data: TreeItem) => {
+const handleNodeClick = async (data: treeItem) => {
   if (data.node_type === 'service') {
     const componentDetail = await fetchComponentDetail(data.id);
   }
@@ -247,18 +248,18 @@ const goToComponentPage = () => {
 // 保留ref版本的表单定义并确保命名唯一
 const newServiceTreeNodeForm = ref<{name: string; node_type: 'category' | 'service'; service_type?: string; description?: string}>({
   name: '',
-  node_type: 'category',
+  node_type: 'service',
   service_type: undefined,
   description: undefined
 });
 
 // 显示添加节点对话框
-const showAddNodeDialog = (parentNode: TreeItem) => {
+const showAddNodeDialog = (parentNode: treeItem) => {
   currentParentNode.value = parentNode;
   // 重置表单数据
   newServiceTreeNodeForm.value = {
     name: '',
-    node_type: 'category',
+    node_type: 'service',
     service_type: undefined,
     description: undefined
   };
@@ -282,27 +283,34 @@ const addChildNode = async () => {
   }
 
   // 创建新节点数据（不含临时ID）
-  const newNodeData: Omit<TreeItem, 'id'> = {
+  const newNodeData: Omit<treeItem, 'id'> = {
     name: newServiceTreeNodeForm.value.name,
     node_type: newServiceTreeNodeForm.value.node_type,
-    level: currentParentNode.value.level + 1,
-    full_path: `${currentParentNode.value.full_path}.${newServiceTreeNodeForm.value.name}`,
-    parent_id: currentParentNode.value.id,
+    level: newServiceTreeNodeForm.value.node_type === 'category' ? currentParentNode.value.level : currentParentNode.value.level + 1,
+    parent_id: newServiceTreeNodeForm.value.node_type === 'category' ? currentParentNode.value.parent_id : currentParentNode.value.id,
+    // 根据节点类型和层级生成full_path
+    full_path: newServiceTreeNodeForm.value.node_type === 'category' 
+      ? (currentParentNode.value.level === 1 
+        ? newServiceTreeNodeForm.value.name 
+        : currentParentNode.value.full_path.split('.').slice(0, -1).join('.') + '.' + newServiceTreeNodeForm.value.name)
+      : `${currentParentNode.value.full_path}.${newServiceTreeNodeForm.value.name}`,
     description: newServiceTreeNodeForm.value.description,
   }
-  console.log("新节点数据:", newNodeData)
 
   try {
     // 显示加载状态
     loading.value = true
     // 发送POST请求到/api/servicetree
-    const response = await axios.post('/api/servicetree', newNodeData)
+    const response = await axios.post('/api/servicetree', newNodeData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
     // 关闭对话框
     addNodeDialogVisible.value = false
     // 刷新服务树数据
     fetchServiceTree()
   } catch (error) {
-    console.error('添加节点失败:', error)
     ElMessage.error('添加节点失败，请重试')
   } finally {
     // 隐藏加载状态
@@ -314,18 +322,18 @@ const addChildNode = async () => {
 onMounted(() => {
   fetchServiceTree()
   
-  // 初始化高度
-  updateTreeHeight()
+  nextTick(() => {
+    updateTreeHeight()
+  })
   // 监听窗口大小变化
   window.addEventListener('resize', updateTreeHeight)
 })
 
 onBeforeUnmount(() => {
-  // 移除事件监听
   window.removeEventListener('resize', updateTreeHeight)
 })
 
-const generateDefaultTree = (): TreeItem[] => [
+const generateDefaultTree = (): treeItem[] => [
   {
     name: 'DevOps',
     full_path: 'DevOps',
@@ -390,10 +398,6 @@ const generateDefaultTree = (): TreeItem[] => [
   margin-top: 16px;
   background-color: white;
   padding: 0 8px;
-}
-
-.service-tree {
-  height: 100vh;
 }
 
 .detail-panel {

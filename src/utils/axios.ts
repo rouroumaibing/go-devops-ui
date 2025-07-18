@@ -7,11 +7,12 @@ const instance = axios.create({
     'Content-Type': 'application/json', 
   },
   transformRequest: [data => {
+    // 自动将对象转换为JSON字符串
     return data && typeof data === 'object' ? JSON.stringify(data) : data;
   }]
 });
 
-
+// 响应拦截器
 instance.interceptors.response.use(
   response => {
     return response;
