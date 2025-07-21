@@ -51,6 +51,12 @@
           <el-empty v-else description="请选择流水线"></el-empty>
         </el-col>
       </el-row>
+
+      <!-- 引入流水线运行状态展示组件 -->
+      <div class="pipeline-run-container">
+        <PipelineRun v-if="selectedPipelineId" :pipeline-id="selectedPipelineId" />
+        <el-empty v-else description="请选择流水线以查看运行状态"></el-empty>
+      </div>
     </div>
   </el-card>
 </template>
@@ -62,6 +68,8 @@ import axios from 'axios';
 import { useRoute, useRouter } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
+// 引入PipelineRun组件
+import PipelineRun from './PipelineRun.vue';
 
 
 interface Pipeline {
@@ -296,5 +304,10 @@ const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePi
   font-size: 14px;
   display: flex;
   align-items: center;
+}
+.pipeline-run-container {
+  margin-top: 30px;
+  padding: 20px;
+  border-top: 1px dashed #e8e8e8;
 }
 </style>
