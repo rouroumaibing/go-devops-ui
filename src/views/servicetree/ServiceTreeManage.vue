@@ -46,8 +46,6 @@
             <h2>{{ componentDetail.name }} 详情</h2>
           </div>
 
-          <el-divider></el-divider>
-
           <el-row :gutter="20">
             <el-col :span="12">
               <el-card>
@@ -58,7 +56,7 @@
                       {{ componentDetail.name }}
                     </el-link>
                   </el-descriptions-item>
-                  <el-descriptions-item label="服务树">{{ componentDetail.service_tree }}</el-descriptions-item>
+                  <el-descriptions-item label="服务树">{{ componentDetail.service_tree.replace(/\./g, '/') }}</el-descriptions-item>
                   <el-descriptions-item label="创建人">{{ componentDetail.owner }}</el-descriptions-item>
                   <el-descriptions-item label="创建时间">{{ componentDetail.created_at }}</el-descriptions-item>
                   <el-descriptions-item label="更新时间">{{ componentDetail.updated_at }}</el-descriptions-item>
@@ -223,10 +221,8 @@ const fetchComponentDetail = async (id: string) => {
     loading.value = true;
     const response = await axios.get(`/api/component/${id}`);
     componentDetail.value = response.data;
-    console.log("获取组件详情数据:", response.data)
   } catch (error) {
     ElMessage.error('Failed to fetch component detail, please try again');
-    console.error('Component detail fetch error:', error);
   } finally {
     loading.value = false;
   }
@@ -258,12 +254,7 @@ const handleNodeClick = async (data: treeItem) => {
 
 const goToComponentPage = () => {
   if (componentDetail.value) {
-
-    ElMessage.success(`跳转到 ${componentDetail.value.name} 的编辑页面`)
-
-    if (componentDetail.value) {
-      router.push({ path: '/service', query: { ...route.query, componentId: componentDetail.value.id } })
-    }
+    router.push({ path: '/service', query: { ...route.query, componentId: componentDetail.value.id } })
   }
 }
 
@@ -368,7 +359,6 @@ const addChildNode = async () => {
     ElMessage.success('节点添加成功')
   } catch (error) {
     ElMessage.error('添加节点失败，请重试')
-    console.error('添加节点错误:', error)
   } finally {
     // 确保加载状态始终被重置
     loading.value = false

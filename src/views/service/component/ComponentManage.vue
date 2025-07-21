@@ -2,30 +2,24 @@
   <div class="component-detail-container">
     <el-card class="component-card">
       <div class="detail-header">
-        <h2>{{ componentData.name }} 详情</h2>
+        <h2>{{ componentDetail.name }} 详情</h2>
         <div class="header-actions">
           <el-button type="primary" @click="handleEditClick">
             <el-icon><Edit /></el-icon> 编辑组件
           </el-button>
-          <el-button type="default" @click="handleBackClick" style="margin-left: 10px;">
-            <el-icon><ArrowLeft /></el-icon> 返回列表
-          </el-button>
         </div>
       </div>
-
-      <el-divider></el-divider>
-
       <el-row :gutter="20">
         <!-- 基本信息卡片 -->
         <el-col :span="12">
           <el-card class="info-card">
             <template #header><h3>基本信息</h3></template>
             <el-descriptions :column="1" border>
-              <el-descriptions-item label="组件名称">{{ componentData.name }}</el-descriptions-item>
-              <el-descriptions-item label="所属服务">{{ componentData.serviceTree }}</el-descriptions-item>
-              <el-descriptions-item label="组件ID">{{ componentData.id }}</el-descriptions-item>
-              <el-descriptions-item label="创建时间">{{ componentData.createTime }}</el-descriptions-item>
-              <el-descriptions-item label="最后更新">{{ componentData.updateTime }}</el-descriptions-item>
+              <el-descriptions-item label="组件名称">{{ componentDetail.name }}</el-descriptions-item>
+              <el-descriptions-item label="所属服务">{{ componentDetail.service_tree?.replace(/\./g, '/') }}</el-descriptions-item>
+              <el-descriptions-item label="组件ID">{{ componentDetail.id }}</el-descriptions-item>
+              <el-descriptions-item label="创建时间">{{ componentDetail.created_at }}</el-descriptions-item>
+              <el-descriptions-item label="最后更新">{{ componentDetail.updated_at }}</el-descriptions-item>
             </el-descriptions>
           </el-card>
         </el-col>
@@ -35,10 +29,10 @@
             <template #header><h3>代码库信息</h3></template>
             <el-descriptions :column="1" border>
               <el-descriptions-item label="代码库地址">
-                <el-link :href="componentData.repoUrl" target="_blank">{{ componentData.repoUrl || '未设置' }}</el-link>
+                <el-link :href="componentDetail.repo_url" target="_blank">{{ componentDetail.repo_url }}</el-link>
               </el-descriptions-item>
-              <el-descriptions-item label="分支">{{ componentData.repoBranch || 'main' }}</el-descriptions-item>
-              <el-descriptions-item label="负责人">{{ componentData.owner }}</el-descriptions-item>
+              <el-descriptions-item label="分支">{{ componentDetail.repo_branch }}</el-descriptions-item>
+              <el-descriptions-item label="负责人">{{ componentDetail.owner }}</el-descriptions-item>
             </el-descriptions>
           </el-card>
         </el-col>
@@ -47,87 +41,146 @@
       <el-card class="desc-card" style="margin-top: 20px;">
         <template #header><h3>组件描述</h3></template>
         <div class="component-description">
-          {{ componentData.description || '暂无描述信息' }}
+          {{ componentDetail.description || '暂无描述信息' }}
         </div>
       </el-card>
+      
+    <el-dialog v-model="editDialogVisible" title="编辑组件" width="50%">
+      <el-form ref="editFormRef" :model="editForm" label-width="120px" :rules="editFormRules">
+        <el-form-item label="代码库地址" prop="repo_url">
+          <el-input v-model="editForm.repo_url"></el-input>
+        </el-form-item>
+        <el-form-item label="代码库分支" prop="repo_branch">
+          <el-input v-model="editForm.repo_branch"></el-input>
+        </el-form-item>
+        <el-form-item label="责任人" prop="owner">
+          <el-input v-model="editForm.owner" ></el-input>
+        </el-form-item>
+        <el-form-item label="组件描述">
+          <el-input
+            v-model="editForm.description"
+            type="textarea"
+            :rows="3"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitEditForm(componentDetail.id)">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import axios from '@/utils/axios'
-import { ref, onMounted, defineProps } from 'vue';
 import { useRoute } from 'vue-router';
-import { Edit, ArrowLeft } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
+import { ref, onMounted, toRefs, reactive} from 'vue';
+import { Edit } from '@element-plus/icons-vue';
+import { ElMessage, ElForm} from 'element-plus';
 
-// 定义组件数据接口
-interface ComponentData {
-  id: number;
+interface componentData {
+  id: string;
   name: string;
-  serviceTree: string;
+  service_tree: string;
   owner: string;
   description?: string;
-  repoUrl?: string;
-  repoBranch?: string;
-  createTime?: string;
-  updateTime?: string;
+  repo_url: string;
+  repo_branch: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-const DEFAULT_COMPONENT_DATA: ComponentData = {
-  id: 2,
-  name: 'push-server',
-  serviceTree: 'DevOps > APP',
-  description: '消息推送服务，负责APP通知推送。支持多种推送方式，包括xxx、xxx、推送等主流推送渠道。',
-  repoUrl: 'https://github.com/example/push-server',
-  repoBranch: 'main',
-  owner: 'xxx', 
-  createTime: '2025-07-15',
-  updateTime: '2025-07-17',
-};
+const route = useRoute();
+
+const state = reactive({
+  componentDetail: {} as componentData
+})
+
+const { componentDetail } = toRefs(state)
+
+// 编辑对话框状态
+const editDialogVisible = ref(false);
+// 编辑表单数据
+const editForm = ref<Partial<componentData>>({});
+// 编辑表单验证规则
+const editFormRules = ref({
+  repo_url: [{ required: true, message: '请输入代码库地址', trigger: 'blur' }],
+  repo_branch: [{ required: true, message: '请输入代码库分支', trigger: 'blur' }],
+  owner: [{ required: true, message: '请输入责任人', trigger: 'blur' }],
+  description: [{ required: true, message: '请输入组件描述', trigger: 'blur' }],
+});
+// 编辑表单引用
+const editFormRef = ref<InstanceType<typeof ElForm>>();
 
 // 编辑按钮点击事件
 const handleEditClick = () => {
-  ElMessage.info(`进入 ${componentData.value.name} 的编辑页面`);
-  // 实际应用中应使用路由跳转
-  // router.push(`/service/component/${componentData.value.id}/edit`);
+  // 打开编辑对话框
+  editDialogVisible.value = true;
+  editForm.value = {
+    repo_url: componentDetail.value.repo_url || '',
+    repo_branch: componentDetail.value.repo_branch || '',
+    owner: componentDetail.value.owner || '',
+    description: componentDetail.value.description || ''
+  };
 };
 
-// 返回列表按钮点击事件
-const handleBackClick = () => {
-  ElMessage.info('返回组件列表');
-  // 实际应用中应使用路由返回
-  // router.go(-1);
-};
+// 提交编辑表单
+const submitEditForm = async (id: string) => {
+  if (!editFormRef.value) return;
+  try {
+    await editFormRef.value.validate();
+    // 调用更新接口
+    console.log("asdasdasd:", id)
+    console.log("asdasdasd:", editForm.value)
 
+    await putComponentData(id, editForm.value as componentData);
+    // 关闭对话框
+    editDialogVisible.value = true;
+    ElMessage.success('组件更新成功');
+  } catch (error) {
+    ElMessage.error('表单验证失败，请检查输入');
+  }
+};
 // 定义接收的组件ID参数
 const props = defineProps<{
   componentId?: string;
 }>();
 
-const route = useRoute();
-const componentData = ref<ComponentData>(DEFAULT_COMPONENT_DATA);
-
 onMounted(() => {
   const queryComponentId = Array.isArray(route.query.componentId) ? route.query.componentId[0] : route.query.componentId;
   const componentId = props.componentId || queryComponentId;
-  if (componentId && componentId !== DEFAULT_COMPONENT_DATA.id.toString()) {
-    loadComponentData(componentId);
+  if (componentId) {
+    fetchComponentData(componentId);
+  } else {
+    ElMessage.error('组件ID参数不存在或格式错误');
   }
+
 });
 
 // 加载组件数据的函数
-const loadComponentData = async (id: string) => {
+const fetchComponentData = async (id: string) => {
   try {
-    // 实际API请求实现
     const response =  await axios.get(`/api/component/${id}`);
-    componentData.value = response.data;
-    ElMessage.success(`加载组件 ${id} 详情成功`);
+    componentDetail.value = response.data;
   } catch (error) {
     ElMessage.error('加载组件详情失败');
-    console.error(error);
   }
 };
+
+const putComponentData = async (id: string, data: componentData) => {
+  try {
+    const response =  await axios.put(`/api/component/${id}`, data);
+    componentDetail.value = response.data;
+  } catch (error) {
+    ElMessage.error('更新组件详情失败');
+  }
+  return componentDetail.value
+}
+
 </script>
 
 <style scoped lang="scss">
