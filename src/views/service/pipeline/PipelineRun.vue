@@ -40,27 +40,27 @@ export default {
         {
           name: '构建',
           nodes: [
-            { name: '构建1', success: "true" },
-            { name: '构建2', success: "true" },
-            { name: '构建3', success: "false" }
+            { id: '000-0000-0000', name: '构建1',command: 'go build', status: "success" },
+            { id: '000-0000-0001', name: '构建2', command: 'go build', status: "success" },
+            { id: '000-0000-0002', name: '归档', command: 'go archive', status: "success" }
           ]
         },{
           name: '卡点',
           nodes: [
-            { name: '责任人： xxx', success: "false" },
+            { id: '000-0000-0003', name: '责任人： xxx', command: 'go test', status: "processing" },
           ]
         }, {
           name: '部署',
           nodes: [
-            { name: 'alpha环境', success: "false" },
-            { name: 'beta环境', success: "false" },
-            { name: 'gamma环境', success: "false" }
+            { id: '000-0000-0004', name: 'alpha环境', command: 'go deploy', status: "failed" },
+            { id: '000-0000-0005', name: 'beta环境', command: 'go deploy', status: "pending" },
+            { id: '000-0000-0006', name: 'gamma环境', command: 'go deploy', status: "pending" }
           ]
         },
          {
            name: '测试',
            nodes: [
-             { name: '自动测试用例', success: "false" }
+             { id: '000-0000-0007', name: '自动测试用例', command: 'go test', status: "pending" }
            ]
          }
       ]

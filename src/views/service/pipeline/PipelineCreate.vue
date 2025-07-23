@@ -8,15 +8,7 @@
         <el-form-item label="流水线描述">
           <el-input type="textarea" v-model="formData.description" placeholder="请输入流水线描述" :rows="3"></el-input>
         </el-form-item>
-
-        <el-form-item label="流水线类型" prop="type">
-          <el-select v-model="formData.type" placeholder="请选择流水线类型">
-            <el-option label="构建流水线" value="build"></el-option>
-            <el-option label="部署流水线" value="deploy"></el-option>
-            <el-option label="综合流水线" value="combined"></el-option>
-          </el-select>
-
-        </el-form-item>
+        
           <el-button :icon="CirclePlus" circle @click="handleAddAction(0)"/>
           <template v-for="(action, index) in pipelineActions" :key="action.name">
             <el-button size="large" round text bg>{{ action.name }}

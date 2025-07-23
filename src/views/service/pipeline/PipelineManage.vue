@@ -9,10 +9,6 @@
         ref="createPipelineFormRef"
         :initial-form-data="{}"
         :component-id="componentId"
-        @cancel="handleCancel"
-        @save="savePipeline"
-        @edit-step="handleStepEdit"
-        @add-stage-between="handleAddStageBetween" 
       />
     </div>
 
@@ -52,7 +48,6 @@
         </el-col>
       </el-row>
 
-      <!-- 引入流水线运行状态展示组件 -->
       <div class="pipeline-run-container">
         <PipelineRun v-if="selectedPipelineId" :pipeline-id="selectedPipelineId" />
         <el-empty v-else description="请选择流水线以查看运行状态"></el-empty>
@@ -62,23 +57,23 @@
 </template>
 
 <script setup lang="ts">
+import axios from 'axios';
 import { ref, onMounted, watch, computed } from 'vue';
 import { ElMessage, ElForm } from 'element-plus';
-import axios from 'axios';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
-// 引入PipelineRun组件
 import PipelineRun from './PipelineRun.vue';
 
 
 interface Pipeline {
   id: number;
   name: string;
-  createTime: string;
-  componentId: number;
-  componentName: string;
-  serviceName?: string;
+  component_id: number;
+  sevice_tree: string;
+  pipeline_detail: string;
+  create_at: string;
+  update_at: string;
 }
 
 interface PipelineFormData {
@@ -90,7 +85,12 @@ interface PipelineFormData {
     subSteps: Record<string, number>;
   };
 }
+interface CreatePipelineFormExposed {
+  pipelineForm: InstanceType<typeof ElForm> | undefined;
+  validateForm: () => Promise<boolean>;
+}
 
+const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
 const pipelineList = ref<Pipeline[]>([]);
 const loading = ref(false);
 const error = ref('');
@@ -105,11 +105,6 @@ const selectedPipeline = computed(() => {
   return pipelineList.value.find(p => p.id === selectedPipelineId.value);
 });
 
-const API_BASE_URL = 'http://localhost:3000/api';
-const API_ENDPOINTS = {
-  pipelines: `${API_BASE_URL}/pipelines`,
-};
-
 const handleApiError = (error: any, defaultData: any[], message: string) => {
   console.error(message, error);
   ElMessage.warning(`${message}，已加载默认数据`);
@@ -118,10 +113,9 @@ const handleApiError = (error: any, defaultData: any[], message: string) => {
 };
 
 const DEFAULT_PIPELINES: Pipeline[] = [
-  { id: 1, name: 'alpha测试环境', createTime: '2023-07-15 10:30', componentId: 2, componentName: '组件B' },
-  { id: 2, name: 'beta测试环境', createTime: '2023-07-18 14:20', componentId: 1, componentName: '组件A' },
-
-  { id: 3, name: 'gamma测试环境', createTime: '2023-07-20 09:15', componentId: 0, componentName: '未分类' }
+  { id: 1, name: 'alpha测试环境', create_at: '2025-07-15 10:30', component_id: 2, sevice_tree: '组件B', pipeline_detail: '组件B的alpha测试环境', update_at: '2025-07-15 10:30' },
+  { id: 2, name: 'beta测试环境', create_at: '2025-07-18 14:20', component_id: 1, sevice_tree: '组件A', pipeline_detail: '组件A的beta测试环境', update_at: '2025-07-18 14:20' },
+  { id: 3, name: 'gamma测试环境', create_at: '2025-07-20 09:15', component_id: 0, sevice_tree: '未分类', pipeline_detail: '未分类的gamma测试环境', update_at: '2025-07-20 09:15' }
 ];
 
 const fetchPipelines = async (componentId?: number) => {
@@ -129,8 +123,8 @@ const fetchPipelines = async (componentId?: number) => {
     loading.value = true;
     error.value = '';
     console.log('开始加载流水线数据'); 
-    const params = componentId ? { componentId } : {};
-    const response = await axios.get(API_ENDPOINTS.pipelines, { params });
+    const id = componentId ? { componentId } : {};
+    const response = await axios.get(`/api/pipelines/${id}`);
     const data = Array.isArray(response.data) ? response.data : DEFAULT_PIPELINES;
     const result = componentId ? data.filter(p => p.componentId === componentId) : data;
     return result.length > 0 ? result : DEFAULT_PIPELINES;
@@ -192,46 +186,7 @@ const handleRun = (pipeline: Pipeline) => {
   // router.push(`/pipeline/run/${pipeline.id}`);
 };
 
-const handleStepEdit = (stepType: string) => {
-  console.log(`编辑步骤: ${stepType}`);
-  // 这里可以添加步骤编辑逻辑
-};
 
-const handleCancel = () => {
-  isCreateMode.value = false;
-  formData.value = { name: '', type: '', group: '' };
-};
-
-const savePipeline = async () => {
-  try {
-    await createPipelineFormRef.value?.pipelineForm?.validate();
-    loading.value = true;
-    error.value = '';
-    console.log('开始保存流水线数据'); 
-    const params = componentId.value ? { componentId: componentId.value } : {};
-    const response = await axios.post(API_ENDPOINTS.pipelines, formData.value, { params });
-    const data = Array.isArray(response.data) ? response.data : DEFAULT_PIPELINES;
-    const result = componentId.value ? data.filter(p => p.componentId === componentId.value) : data;
-    return result.length > 0 ? result : DEFAULT_PIPELINES;
-  } catch (err) {
-    const defaultData = handleApiError(err, DEFAULT_PIPELINES, '保存流水线失败');
-    const result = componentId.value ? defaultData.filter(p => p.componentId === componentId.value) : defaultData;
-    return result.length > 0 ? result : DEFAULT_PIPELINES;
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleAddStageBetween = (index: number) => {
-  console.log('Adding stage between index:', index);
-};
-
-interface CreatePipelineFormExposed {
-  pipelineForm: InstanceType<typeof ElForm> | undefined;
-  validateForm: () => Promise<boolean>;
-}
-
-const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
 </script>
 
 <style scoped>
