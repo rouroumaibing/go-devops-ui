@@ -5,7 +5,6 @@
     </template>
     <div v-if="isCreateMode">
       <PipelineCreate
-        v-if="isCreateMode"
         ref="createPipelineFormRef"
         :initial-form-data="{}"
         :component-id="componentId"
@@ -34,9 +33,9 @@
           <el-table v-if="selectedPipeline" :data="[selectedPipeline]" border stripe>
             <el-table-column type="index" label="序号" width="80"></el-table-column>
             <el-table-column prop="name" label="流水线名称" width="180"></el-table-column>
-            <el-table-column prop="componentName" label="所属组件" width="180"></el-table-column>
-            <el-table-column prop="serviceName" label="所属服务"></el-table-column>
-            <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
+            <el-table-column prop="component_id" label="所属组件" width="180"></el-table-column>
+            <el-table-column prop="service_tree" label="所属服务"></el-table-column>
+            <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
             <el-table-column label="操作" width="250">
               <template #default="scope">
                 <el-button type="primary" size="small" @click="handleRun(scope.row)">运行</el-button>
@@ -58,23 +57,33 @@
 
 <script setup lang="ts">
 import axios from 'axios';
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, reactive, toRefs } from 'vue';
 import { ElMessage, ElForm } from 'element-plus';
-import { useRoute } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
 import PipelineRun from './PipelineRun.vue';
 
-
-interface Pipeline {
-  id: number;
+interface pipeline {
+  id: string;
   name: string;
-  component_id: number;
-  sevice_tree: string;
-  pipeline_detail: string;
-  create_at: string;
-  update_at: string;
+  component_id: string;
+  service_tree: string;
+  pipeline_stages: string;
+  created_at: string;
+  updated_at: string;
 }
+
+interface pipeline_job{
+  id: string;
+  name: string;
+  command: string;
+  pipeline_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;  
+}
+
 
 interface PipelineFormData {
   name: string;
@@ -89,17 +98,30 @@ interface CreatePipelineFormExposed {
   pipelineForm: InstanceType<typeof ElForm> | undefined;
   validateForm: () => Promise<boolean>;
 }
+const state = reactive({
+  pipelineDetail: null as pipeline | null,
+  pipelineStagesDetail: null as pipeline_job | null,
+});
+
+const { pipelineDetail, pipelineStagesDetail } = toRefs(state);
 
 const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
-const pipelineList = ref<Pipeline[]>([]);
+const pipelineList = ref<pipeline[]>([]);
 const loading = ref(false);
 const error = ref('');
-const route = useRoute();
+const router = useRoute();
 const componentId = ref<number | undefined>(undefined);
-const selectedPipelineId = ref<number | undefined>(undefined);
+const selectedPipelineId = ref<string | undefined>(undefined);
 const isCreateMode = ref(false);
 const formData = ref<PipelineFormData>({ name: '', type: '', group: '' });
 const pipelineForm = ref<InstanceType<typeof ElForm>>();
+
+const DEFAULT_PIPELINES: pipeline[] = [
+  { id: '000-0000-0000-0001', name: 'alpha测试环境', created_at: '2025-07-15 10:30', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-15 10:30' },
+  { id: '000-0000-0000-0002', name: 'beta测试环境', created_at: '2025-07-18 14:20', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-18 14:20' },
+  { id: '000-0000-0000-0003', name: 'gamma测试环境', created_at: '2025-07-20 09:15', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-20 09:15' }
+
+];
 
 const selectedPipeline = computed(() => {
   return pipelineList.value.find(p => p.id === selectedPipelineId.value);
@@ -112,22 +134,31 @@ const handleApiError = (error: any, defaultData: any[], message: string) => {
   return defaultData;
 };
 
-const DEFAULT_PIPELINES: Pipeline[] = [
-  { id: 1, name: 'alpha测试环境', create_at: '2025-07-15 10:30', component_id: 2, sevice_tree: '组件B', pipeline_detail: '组件B的alpha测试环境', update_at: '2025-07-15 10:30' },
-  { id: 2, name: 'beta测试环境', create_at: '2025-07-18 14:20', component_id: 1, sevice_tree: '组件A', pipeline_detail: '组件A的beta测试环境', update_at: '2025-07-18 14:20' },
-  { id: 3, name: 'gamma测试环境', create_at: '2025-07-20 09:15', component_id: 0, sevice_tree: '未分类', pipeline_detail: '未分类的gamma测试环境', update_at: '2025-07-20 09:15' }
-];
+const enterCreateMode = () => {
+  isCreateMode.value = true;
+  formData.value = { name: '', type: '', group: '' };
+  if (pipelineForm.value) {
+    pipelineForm.value.clearValidate();
+  }
+};
 
-const fetchPipelines = async (componentId?: number) => {
+
+const handleEdit = (pipeline: pipeline) => {
+  console.log('编辑流水线:', pipeline);
+  // router.push(`/pipeline/edit/${pipeline.id}`);
+};
+
+const handleRun = (pipeline: pipeline) => {
+  console.log('运行流水线:', pipeline);
+  // router.push(`/pipeline/run/${pipeline.id}`);
+};
+
+const fetchPipelines = async (id: string) => {
   try {
     loading.value = true;
-    error.value = '';
-    console.log('开始加载流水线数据'); 
-    const id = componentId ? { componentId } : {};
     const response = await axios.get(`/api/pipelines/${id}`);
-    const data = Array.isArray(response.data) ? response.data : DEFAULT_PIPELINES;
-    const result = componentId ? data.filter(p => p.componentId === componentId) : data;
-    return result.length > 0 ? result : DEFAULT_PIPELINES;
+    pipelineDetail.value = response.data;
+    return DEFAULT_PIPELINE_DETAIL;
   } catch (err) {
 const defaultData = handleApiError(err, DEFAULT_PIPELINES, '获取流水线列表失败');
     const result = componentId ? defaultData.filter(p => p.componentId === componentId) : defaultData;
@@ -138,17 +169,17 @@ const defaultData = handleApiError(err, DEFAULT_PIPELINES, '获取流水线列�
 };
 
 onMounted(async () => {
-  const componentIdParam = route.query.componentId;
+  const componentIdParam = router.query.componentId;
   if (componentIdParam && !isNaN(Number(componentIdParam))) {
     componentId.value = Number(componentIdParam);
   } else if (componentIdParam) {
-    ElMessage.warning('无效的组件ID参数，将显示所有流水线');
+    ElMessage.warning('无效的组件ID参数, 将显示所有流水线');
   }
-  pipelineList.value = await fetchPipelines(componentId.value);
+  pipelineList.value = await fetchPipelines(componentId);
 });
 
 watch(
-  () => route.query.componentId,
+  () => router.query.componentId,
   (newComponentId) => {
     if (newComponentId !== undefined) {
       if (!isNaN(Number(newComponentId))) {
@@ -157,7 +188,7 @@ watch(
           pipelineList.value = data;
         });
       } else {
-        ElMessage.warning('无效的组件ID参数，将显示所有流水线');
+        ElMessage.warning('无效的组件ID参数,将显示所有流水线');
         componentId.value = undefined;
         fetchPipelines().then(data => {
           pipelineList.value = data;
@@ -167,24 +198,43 @@ watch(
   }
 );
 
-const enterCreateMode = () => {
-  isCreateMode.value = true;
-  formData.value = { name: '', type: '', group: '' };
-  if (pipelineForm.value) {
-    pipelineForm.value.clearValidate();
+const generateDefaultPipeline = (): pipeline[] => [
+  { id: '000-0000-0000-0001', name: 'alpha测试环境', created_at: '2025-07-15 10:30', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-15 10:30' },
+  { id: '000-0000-0000-0002', name: 'beta测试环境', created_at: '2025-07-18 14:20', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-18 14:20' },
+  { id: '000-0000-0000-0003', name: 'gamma测试环境', created_at: '2025-07-20 09:15', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-20 09:15' }
+
+];
+
+[
+  {
+    name: '构建',
+    stages: [
+      { id: '000-0000-0000', name: '构建1', command: 'go build', status: 'success' },
+      { id: '000-0000-0001', name: '构建2', command: 'go build', status: 'success' },
+      { id: '000-0000-0002', name: '归档', command: 'go archive', status: 'success' }
+    ]
+  },
+  {
+    name: '卡点',
+    stages: [
+      { id: '000-0000-0003', name: '责任人： xxx', command: 'go test', status: 'processing' }
+    ]
+  },
+  {
+    name: '部署',
+    stages: [
+      { id: '000-0000-0004', name: 'alpha环境', command: 'go deploy', status: 'failed' },
+      { id: '000-0000-0005', name: 'beta环境', command: 'go deploy', status: 'pending' },
+      { id: '000-0000-0006', name: 'gamma环境', command: 'go deploy', status: 'pending' }
+    ]
+  },
+  {
+    name: '测试',
+    stages: [
+      { id: '000-0000-0007', name: '自动测试用例', command: 'go test', status: 'pending' }
+    ]
   }
-};
-
-
-const handleEdit = (pipeline: Pipeline) => {
-  console.log('编辑流水线:', pipeline);
-  // router.push(`/pipeline/edit/${pipeline.id}`);
-};
-
-const handleRun = (pipeline: Pipeline) => {
-  console.log('运行流水线:', pipeline);
-  // router.push(`/pipeline/run/${pipeline.id}`);
-};
+];
 
 
 </script>

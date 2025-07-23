@@ -4,29 +4,32 @@
         <el-form-item label="流水线名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入流水线名称" maxLength="50"></el-input>
         </el-form-item>
-
-        <el-form-item label="流水线描述">
-          <el-input type="textarea" v-model="formData.description" placeholder="请输入流水线描述" :rows="3"></el-input>
-        </el-form-item>
         
           <el-button :icon="CirclePlus" circle @click="handleAddAction(0)"/>
           <template v-for="(action, index) in pipelineActions" :key="action.name">
-            <el-button size="large" round text bg>{{ action.name }}
+            <el-button size="large" round text bg @click="handleEditAction(index)">{{ action.name }}
             <el-icon><EditPen /></el-icon>
             <el-icon><Operation /></el-icon>
             </el-button>
             <el-button :icon="CirclePlus" circle @click="handleAddAction(index + 1)" />
           </template>
         </el-form>
-          <PipelineStage
+          <AddStage
             :visible="showAddActionDialog"
-            :title="dialogTitle"
+            :title="addActionDialogTitle"
             :action-name="newActionName"
             @update:visible="(value: boolean) => showAddActionDialog = value"
             @confirm="confirmAddAction"
             @cancel="handleDialogCancel"
-          ></PipelineStage>
-
+          ></AddStage>
+          <EditStage
+            :visible="showEditActionDialog"
+            :title="editActionDialogTitle"
+            :action-name="editActionName"
+            @update:visible="(value: boolean) => showEditActionDialog = value"
+            @confirm="confirmEditAction"
+            @cancel="handleDialogCancel"
+          ></EditStage>
       <div class="form-actions">
         <el-button @click="handleCancel">取消</el-button>
         <el-button type="primary" @click="handleSubmit">提交</el-button>
@@ -39,10 +42,30 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { CirclePlus, EditPen, Operation } from '@element-plus/icons-vue';
-import PipelineStage from './PipelineStage.vue';
+import AddStage from './stages/AddStage.vue';
+import EditStage from './stages/EditStage.vue';
+
+interface pipeline {
+  id: string;
+  name: string;
+  component_id: string;
+  service_tree: string;
+  pipeline_detail: string;
+  create_at: string;
+  update_at: string;
+}
+
+interface pipeline_job{
+  id: string;
+  name: string;
+  commamd: string;
+  pipeline_id: string;
+  status: string;
+  create_at: string;
+  update_at: string;  
+}
 
 const router = useRouter();
-
 const pipelineActions = ref([
   { name: '构建' },
   { name: '测试' },
@@ -51,8 +74,11 @@ const pipelineActions = ref([
 
 const currentInsertIndex = ref(0);
 const showAddActionDialog = ref(false);
+const showEditActionDialog = ref(false);
 const newActionName = ref('');
-const dialogTitle = ref('添加新操作');
+const editActionName = ref('');
+const addActionDialogTitle = ref('添加');
+const editActionDialogTitle = ref('编辑');
 
 // 添加新操作的处理函数
 const handleAddAction = (index: number) => {
@@ -60,6 +86,14 @@ const handleAddAction = (index: number) => {
   showAddActionDialog.value = true;
   newActionName.value = ''; 
 };
+
+// 添加新编辑的处理函数
+const handleEditAction = (index: number) => {
+  currentInsertIndex.value = index;
+  showEditActionDialog.value = true;
+  editActionName.value = pipelineActions.value[index].name;
+};
+
 // 确认添加新操作
 const confirmAddAction = (newActionName: string) => {
 
@@ -77,6 +111,15 @@ const confirmAddAction = (newActionName: string) => {
   ElMessage.success('操作添加成功');
 };
 
+const confirmEditAction = (editActionName: string) => {
+  if (!editActionName.trim()) {
+    ElMessage.error('请输入操作名称');
+    return;
+  }
+  pipelineActions.value[currentInsertIndex.value].name = editActionName.trim();
+  showEditActionDialog.value = false;
+  ElMessage.success('操作编辑成功');
+}
 
 // 表单引用
 const pipelineForm = ref<FormInstance>();
@@ -102,17 +145,13 @@ const formRules = reactive<FormRules>({
   ]
 });
 
-
-// 提交表单
 const handleSubmit = async () => {
   if (!pipelineForm.value) return;
 
   try {
     const valid = await pipelineForm.value.validate();
     if (valid) {
-      // 这里添加表单提交逻辑
       console.log('流水线数据:', formData);
-      // 提交成功后可以重定向或显示成功消息
       ElMessage.success('流水线创建成功');
     }
   } catch (error) {
@@ -120,12 +159,10 @@ const handleSubmit = async () => {
   }
 };
 
-// 取消操作
 const handleCancel = () => {
   router.go(-1);
 };
 
-// 添加取消对话框的处理函数
 const handleDialogCancel = () => {
   newActionName.value = '';
 };
