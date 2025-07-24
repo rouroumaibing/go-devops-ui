@@ -69,21 +69,33 @@ interface pipeline {
   name: string;
   component_id: string;
   service_tree: string;
-  pipeline_stages: string;
   created_at: string;
   updated_at: string;
+  pipeline_stages: pipeline_stages[];
+}
+
+interface pipeline_stages {
+  id: string;
+  group_id: string;
+  group_name: string;
+  group_order: number;
+  stage_name: string;
+  stage_order: number;
+  pipeline_id: string;
+  created_at: string;
+  updated_at: string;
+  pipeline_jobs: pipeline_job
 }
 
 interface pipeline_job{
   id: string;
-  name: string;
-  command: string;
   pipeline_id: string;
+  stage_id: string;
+  command: string;
   status: string;
   created_at: string;
   updated_at: string;  
 }
-
 
 interface PipelineFormData {
   name: string;
@@ -100,28 +112,23 @@ interface CreatePipelineFormExposed {
 }
 const state = reactive({
   pipelineDetail: null as pipeline | null,
-  pipelineStagesDetail: null as pipeline_job | null,
+  pipelineStagesDetail: null as pipeline_stages | null,
+  pipelineJobsDetail: null as pipeline_job | null,
 });
 
-const { pipelineDetail, pipelineStagesDetail } = toRefs(state);
+const { pipelineDetail, pipelineStagesDetail, pipelineJobsDetail } = toRefs(state);
 
 const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
 const pipelineList = ref<pipeline[]>([]);
 const loading = ref(false);
 const error = ref('');
 const router = useRoute();
-const componentId = ref<number | undefined>(undefined);
+const componentId = ref<string | undefined>(undefined);
 const selectedPipelineId = ref<string | undefined>(undefined);
 const isCreateMode = ref(false);
 const formData = ref<PipelineFormData>({ name: '', type: '', group: '' });
 const pipelineForm = ref<InstanceType<typeof ElForm>>();
 
-const DEFAULT_PIPELINES: pipeline[] = [
-  { id: '000-0000-0000-0001', name: 'alpha测试环境', created_at: '2025-07-15 10:30', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-15 10:30' },
-  { id: '000-0000-0000-0002', name: 'beta测试环境', created_at: '2025-07-18 14:20', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-18 14:20' },
-  { id: '000-0000-0000-0003', name: 'gamma测试环境', created_at: '2025-07-20 09:15', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-20 09:15' }
-
-];
 
 const selectedPipeline = computed(() => {
   return pipelineList.value.find(p => p.id === selectedPipelineId.value);
@@ -153,88 +160,179 @@ const handleRun = (pipeline: pipeline) => {
   // router.push(`/pipeline/run/${pipeline.id}`);
 };
 
-const fetchPipelines = async (id: string) => {
+const fetchPipelines = async (componentId: string) => {
   try {
     loading.value = true;
-    const response = await axios.get(`/api/pipelines/${id}`);
+    const response = await axios.get(`/api/component/${componentId}/pipelines`);
     pipelineDetail.value = response.data;
-    return DEFAULT_PIPELINE_DETAIL;
+    return [pipelineDetail.value];
   } catch (err) {
-const defaultData = handleApiError(err, DEFAULT_PIPELINES, '获取流水线列表失败');
-    const result = componentId ? defaultData.filter(p => p.componentId === componentId) : defaultData;
-    return result.length > 0 ? result : DEFAULT_PIPELINES;
+    const defaultData = handleApiError(err, generateDefaultPipeline(), '获取流水线列表失败');
+    return defaultData;
   } finally {
     loading.value = false;
   }
 };
 
 onMounted(async () => {
-  const componentIdParam = router.query.componentId;
-  if (componentIdParam && !isNaN(Number(componentIdParam))) {
-    componentId.value = Number(componentIdParam);
-  } else if (componentIdParam) {
-    ElMessage.warning('无效的组件ID参数, 将显示所有流水线');
-  }
-  pipelineList.value = await fetchPipelines(componentId);
+  const queryComponentId = router.query.componentId;
+  componentId.value = typeof queryComponentId === 'string' ? queryComponentId : undefined;
+  pipelineList.value = await fetchPipelines(String(queryComponentId));
 });
 
 watch(
   () => router.query.componentId,
   (newComponentId) => {
-    if (newComponentId !== undefined) {
-      if (!isNaN(Number(newComponentId))) {
-        componentId.value = Number(newComponentId);
-        fetchPipelines(componentId.value).then(data => {
-          pipelineList.value = data;
-        });
-      } else {
-        ElMessage.warning('无效的组件ID参数,将显示所有流水线');
-        componentId.value = undefined;
-        fetchPipelines().then(data => {
-          pipelineList.value = data;
-        });
-      }
-    }
+    // 当componentId变化时重新获取流水线数据
+    fetchPipelines(String(newComponentId)); 
   }
 );
 
-const generateDefaultPipeline = (): pipeline[] => [
-  { id: '000-0000-0000-0001', name: 'alpha测试环境', created_at: '2025-07-15 10:30', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-15 10:30' },
-  { id: '000-0000-0000-0002', name: 'beta测试环境', created_at: '2025-07-18 14:20', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-18 14:20' },
-  { id: '000-0000-0000-0003', name: 'gamma测试环境', created_at: '2025-07-20 09:15', component_id: '0000-0000-0000-0020', service_tree: 'push-server', pipeline_stages: JSON.stringify(DEFAULT_PIPELINE_DETAIL), updated_at: '2025-07-20 09:15' }
+const generateDefaultPipeline = (): pipeline[] =>[
+{
+  "id": "0000-0000-0123",
+  "name": "流水线1",
+  "component_id": "a4f44f30-43e3-4e42-8167-373e2f8da001",
+  "service_tree": "app/push-server",
+  "created_at": "2025-07-15 10:30",
+  "updated_at": "2025-07-15 10:30",
+  "pipeline_stages": [{
+        "id": "000-0000-0000",
+        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
+        "group_name": "构建",
+        "group_order": 1,
+        "stage_name": "构建1",
+        "stage_order": 1,
+        "pipeline_id": "0000-0000-0123",
+        "created_at": "2025-07-15 10:30",
+        "updated_at": "2025-07-15 10:30",
+        "pipeline_jobs" :{
+            "id": "000-0000-0000-1111",
+            "pipeline_id": "0000-0000-0123",
+            "stage_id": "000-0000-0000",
+            "command": "go build",
+            "status": "success",
+            "created_at": "2025-07-15 10:30",
+            "updated_at": "2025-07-15 10:30",
+        }
+    },{
+        "id": "000-0000-0001",
+        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
+        "group_name": "构建",
+        "group_order": 1,
+        "stage_name": "构建2",
+        "stage_order": 2,
+        "pipeline_id": "0000-0000-0123",
+        "created_at": "2025-07-15 10:30",
+        "updated_at": "2025-07-15 10:30",
+        "pipeline_jobs" :{
+            "id": "000-0000-0000-1112",
+            "pipeline_id": "0000-0000-0123",
+            "stage_id": "000-0000-0001",
+            "command": "go build",
+            "status": "success",
+            "created_at": "2025-07-15 10:30",
+            "updated_at": "2025-07-15 10:30",
+        }
+      },{
+        "id": "000-0000-0002",
+        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
+        "group_name": "构建",
+        "group_order": 1,
+        "stage_name": "归档",
+        "stage_order": 3,
+        "pipeline_id": "0000-0000-0123",
+        "created_at": "2025-07-15 10:30",
+        "updated_at": "2025-07-15 10:30",
+        "pipeline_jobs" :{
+            "id": "000-0000-0000-1113",
+            "pipeline_id": "0000-0000-0123",
+            "stage_id": "000-0000-0002",
+            "command": "go package",
+            "status": "success",
+            "created_at": "2025-07-15 10:30",
+            "updated_at": "2025-07-15 10:30",
+        }
+      },{
+        "id": "000-0000-0003",
+        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx02",
+        "group_name": "卡点",
+        "group_order": 2,
+        "stage_name": "责任人： xxx",
+        "stage_order": 1,
+        "pipeline_id": "0000-0000-0123",
+        "created_at": "2025-07-15 10:30",
+        "updated_at": "2025-07-15 10:30",
+        "pipeline_jobs" :{
+            "id": "000-0000-0000-1114",
+            "pipeline_id": "0000-0000-0123",
+            "stage_id": "000-0000-0003",
+            "command": "kakakaka",
+            "status": "success",
+            "created_at": "2025-07-15 10:30",
+            "updated_at": "2025-07-15 10:30",
+        }
+      },{
+        "id": "000-0000-0004",
+        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
+        "group_name": "部署",
+        "group_order": 3,
+        "stage_name": "alpha环境",
+        "stage_order": 1,
+        "pipeline_id": "0000-0000-0123",
+        "created_at": "2025-07-15 10:30",
+        "updated_at": "2025-07-15 10:30",
+        "pipeline_jobs" :{
+            "id": "000-0000-0000-1115",
+            "pipeline_id": "0000-0000-0123",
+            "stage_id": "000-0000-0004",
+            "command": "go deploy",
+            "status": "failed",
+            "created_at": "2025-07-15 10:30",
+            "updated_at": "2025-07-15 10:30",
+        }
+      },{
+        "id": "000-0000-0005",
+        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
+        "group_name": "部署",
+        "group_order": 3,
+        "stage_name": "beta环境",
+        "stage_order": 2,
+        "pipeline_id": "0000-0000-0123",
+        "created_at": "2025-07-15 10:30",
+        "updated_at": "2025-07-15 10:30",
+        "pipeline_jobs" :{
+            "id": "000-0000-0000-1116",
+            "pipeline_id": "0000-0000-0123",
+            "stage_id": "000-0000-0005",
+            "command": "go deploy",
+            "status": "pending",
+            "created_at": "2025-07-15 10:30",
+            "updated_at": "2025-07-15 10:30",
+        }
+      },{
+        "id": "000-0000-0006",
+        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx04",
+        "group_name": "测试",
+        "group_order": 4,
+        "stage_name": "自动测试用例",
+        "stage_order": 1,
+        "pipeline_id": "0000-0000-0123",
+        "created_at": "2025-07-15 10:30",
+        "updated_at": "2025-07-15 10:30",
+        "pipeline_jobs" :{
+            "id": "000-0000-0000-1117",
+            "pipeline_id": "0000-0000-0123",
+            "stage_id": "000-0000-0006",
+            "command": "go test",
+            "status": "pending",
+            "created_at": "2025-07-15 10:30",
+            "updated_at": "2025-07-15 10:30",
+        }
+      },
+    ]}
+    ]
 
-];
-
-[
-  {
-    name: '构建',
-    stages: [
-      { id: '000-0000-0000', name: '构建1', command: 'go build', status: 'success' },
-      { id: '000-0000-0001', name: '构建2', command: 'go build', status: 'success' },
-      { id: '000-0000-0002', name: '归档', command: 'go archive', status: 'success' }
-    ]
-  },
-  {
-    name: '卡点',
-    stages: [
-      { id: '000-0000-0003', name: '责任人： xxx', command: 'go test', status: 'processing' }
-    ]
-  },
-  {
-    name: '部署',
-    stages: [
-      { id: '000-0000-0004', name: 'alpha环境', command: 'go deploy', status: 'failed' },
-      { id: '000-0000-0005', name: 'beta环境', command: 'go deploy', status: 'pending' },
-      { id: '000-0000-0006', name: 'gamma环境', command: 'go deploy', status: 'pending' }
-    ]
-  },
-  {
-    name: '测试',
-    stages: [
-      { id: '000-0000-0007', name: '自动测试用例', command: 'go test', status: 'pending' }
-    ]
-  }
-];
 
 
 </script>
