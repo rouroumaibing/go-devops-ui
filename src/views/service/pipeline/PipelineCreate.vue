@@ -38,34 +38,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, defineEmits, defineProps } from 'vue';
+import axios from 'axios';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { CirclePlus, EditPen, Operation } from '@element-plus/icons-vue';
 import AddStage from './stages/AddStage.vue';
 import EditStage from './stages/EditStage.vue';
+import Pipeline from './PipelineManage.vue';
+import Pipeline_stages from './PipelineManage.vue';
+import Pipeline_job  from './PipelineManage.vue';
 
-interface pipeline {
-  id: string;
-  name: string;
-  component_id: string;
-  service_tree: string;
-  pipeline_detail: string;
-  create_at: string;
-  update_at: string;
-}
+const emit = defineEmits(['cancel', 'success']);
 
-interface pipeline_job{
-  id: string;
-  name: string;
-  commamd: string;
-  pipeline_id: string;
-  status: string;
-  create_at: string;
-  update_at: string;  
-}
-
-const router = useRouter();
 const pipelineActions = ref([
   { name: '构建' },
   { name: '测试' },
@@ -79,6 +63,10 @@ const newActionName = ref('');
 const editActionName = ref('');
 const addActionDialogTitle = ref('添加');
 const editActionDialogTitle = ref('编辑');
+
+const props = defineProps<{
+  componentId: string;
+}>();
 
 // 添加新操作的处理函数
 const handleAddAction = (index: number) => {
@@ -145,26 +133,65 @@ const formRules = reactive<FormRules>({
   ]
 });
 
+const handleCancel = () => {
+  emit('cancel');
+};
+
+const handleDialogCancel = () => {
+  newActionName.value = '';
+};
+
+
+const fetchPipelineStagesDetail = async (id: string, stage_id: string) => {
+  try {
+    loading.value = true;
+    const response = await axios.get(`/api/pipeline/${id}/stage/${stage_id}`);
+    pipelineStagesDetail.value = response.data;
+  } catch (error) {
+    ElMessage.error('Failed to fetch component detail, please try again');
+  } finally {
+    loading.value = false;
+  }
+  return pipelineStagesDetail.value
+};
+
 const handleSubmit = async () => {
   if (!pipelineForm.value) return;
 
   try {
     const valid = await pipelineForm.value.validate();
     if (valid) {
-      console.log('流水线数据:', formData);
+     // 构建符合Pipeline接口的请求数据
+      const pipelineData: Omit<typeof Pipeline, 'id'> = {
+        name: formData.name,
+        component_id: props.componentId,
+        service_tree: '', 
+        pipeline_stages: pipelineActions.value.map((action, index) => ({
+          group_id: action.group_id,
+          group_name: action.group_name,
+          group_order: index + 1,
+          stage_name: action.stage_name,
+          stage_order: 1,
+          pipeline_id: '',
+          pipeline_jobs: {
+            pipeline_id: '',
+            stage_id: '',
+            command: '', 
+            status: 'pending',
+          }
+        }))
+      };
+
+      // 发送创建流水线的POST请求
+      const response = await axios.post('/api/pipeline', pipelineData);
       ElMessage.success('流水线创建成功');
+      emit('success', response.data);
+      emit('cancel');
     }
   } catch (error) {
     console.log('表单验证失败:', error);
+    ElMessage.error('流水线创建失败，请检查表单数据');
   }
-};
-
-const handleCancel = () => {
-  router.go(-1);
-};
-
-const handleDialogCancel = () => {
-  newActionName.value = '';
 };
 
 </script>

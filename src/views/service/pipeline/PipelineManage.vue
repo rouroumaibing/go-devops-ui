@@ -7,7 +7,8 @@
       <PipelineCreate
         ref="createPipelineFormRef"
         :initial-form-data="{}"
-        :component-id="componentId"
+        :component-id="componentId || ''"
+         @cancel="isCreateMode = false"
       />
     </div>
 
@@ -23,7 +24,7 @@
               v-for="item in pipelineList"
               :key="item.id"
               :label="item.name"
-              :value="item.id"
+              :value="item.id || ''"
             />
           </el-select>
         </el-col>
@@ -64,37 +65,37 @@ import { useRouter, useRoute } from 'vue-router';
 import PipelineCreate from './PipelineCreate.vue';
 import PipelineRun from './PipelineRun.vue';
 
-interface pipeline {
-  id: string;
+interface Pipeline {
+  id?: string;
   name: string;
   component_id: string;
   service_tree: string;
-  created_at: string;
-  updated_at: string;
-  pipeline_stages: pipeline_stages[];
+  created_at?: string;
+  updated_at?: string;
+  pipeline_stages: Pipeline_stages[];
 }
 
-interface pipeline_stages {
-  id: string;
+interface Pipeline_stages {
+  id?: string;
   group_id: string;
   group_name: string;
   group_order: number;
   stage_name: string;
   stage_order: number;
   pipeline_id: string;
-  created_at: string;
-  updated_at: string;
-  pipeline_jobs: pipeline_job
+  created_at?: string;
+  updated_at?: string;
+  pipeline_jobs: Pipeline_job;
 }
 
-interface pipeline_job{
-  id: string;
+interface Pipeline_job{
+  id?: string;
   pipeline_id: string;
   stage_id: string;
   command: string;
   status: string;
-  created_at: string;
-  updated_at: string;  
+  created_at?: string;
+  updated_at?: string;  
 }
 
 interface PipelineFormData {
@@ -111,15 +112,15 @@ interface CreatePipelineFormExposed {
   validateForm: () => Promise<boolean>;
 }
 const state = reactive({
-  pipelineDetail: null as pipeline | null,
-  pipelineStagesDetail: null as pipeline_stages | null,
-  pipelineJobsDetail: null as pipeline_job | null,
+  pipelineDetail: null as Pipeline | null,
+  pipelineStagesDetail: null as Pipeline_stages | null,
+  pipelineJobsDetail: null as Pipeline_job | null,
 });
 
 const { pipelineDetail, pipelineStagesDetail, pipelineJobsDetail } = toRefs(state);
 
 const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
-const pipelineList = ref<pipeline[]>([]);
+const pipelineList = ref<Pipeline[]>([]);
 const loading = ref(false);
 const error = ref('');
 const router = useRoute();
@@ -147,15 +148,16 @@ const enterCreateMode = () => {
   if (pipelineForm.value) {
     pipelineForm.value.clearValidate();
   }
+  
 };
 
 
-const handleEdit = (pipeline: pipeline) => {
+const handleEdit = (pipeline: Pipeline) => {
   console.log('编辑流水线:', pipeline);
   // router.push(`/pipeline/edit/${pipeline.id}`);
 };
 
-const handleRun = (pipeline: pipeline) => {
+const handleRun = (pipeline: Pipeline) => {
   console.log('运行流水线:', pipeline);
   // router.push(`/pipeline/run/${pipeline.id}`);
 };
@@ -165,7 +167,7 @@ const fetchPipelines = async (componentId: string) => {
     loading.value = true;
     const response = await axios.get(`/api/component/${componentId}/pipelines`);
     pipelineDetail.value = response.data;
-    return [pipelineDetail.value];
+    return Array.isArray(pipelineDetail.value) ? pipelineDetail.value : generateDefaultPipeline();
   } catch (err) {
     const defaultData = handleApiError(err, generateDefaultPipeline(), '获取流水线列表失败');
     return defaultData;
@@ -188,7 +190,7 @@ watch(
   }
 );
 
-const generateDefaultPipeline = (): pipeline[] =>[
+const generateDefaultPipeline = (): Pipeline[] =>[
 {
   "id": "0000-0000-0123",
   "name": "流水线1",

@@ -17,7 +17,7 @@
       style="margin-top: 15px;"
     >
       <el-option 
-        v-for="type in stageType"
+        v-for="type in StageType"
         :key="type.value"
         :label="type.name"
         :value="type.value"
@@ -46,7 +46,7 @@ import CheckPointStage from './CheckPointStage.vue';
 import TestStage from './TestStage.vue';
 
 // 定义阶段类型选项
-const stageType = ref([ 
+const StageType = ref([ 
   { name: '构建', value: 'build' }, 
   { name: '人工卡点', value: 'checkpoint' }, 
   { name: '部署', value: 'deploy' }, 
@@ -97,14 +97,11 @@ const currentStageComponent = computed(() => {
 });
 
 const handleConfirm = () => {
-  // 确认时传递阶段ID、名称和类型
-  emits('confirm', {
-    id: props.stageId,
-    name: actionName.value,
-    type: selectedStageType.value
-  });
+  emits('confirm', actionName.value ? actionName.value.trim() : '');
+  emits('update:visible', false);
   visible.value = false;
-};
+}
+
 
 const handleCancel = () => {
   emits('cancel');
