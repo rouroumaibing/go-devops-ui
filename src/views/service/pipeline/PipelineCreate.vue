@@ -4,20 +4,21 @@
         <el-form-item label="流水线名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入流水线名称" maxLength="50"></el-input>
         </el-form-item>
-        
-          <el-button :icon="CirclePlus" circle @click="handleAddAction(0)"/>
-          <template v-for="(action, index) in pipelineActionsDefault" :key="action.name">
-            <el-button size="large" round text bg @click="handleEditAction(index)">{{ action.name }}
-            <el-icon><EditPen /></el-icon>
-            <el-icon><Operation /></el-icon>
+            <el-button :icon="Plus" circle @click="handleAddAction(0)"/>
+            <template v-for="(action, index) in pipelineActionsDefault" :key="action.group_name">
+            <el-button size="large" round text bg @click="handleEditAction(index)">
+              {{ action.group_name }}
+              <el-icon><EditPen /></el-icon>
+              <el-icon><Operation /></el-icon>
             </el-button>
-            <el-button :icon="CirclePlus" circle @click="handleAddAction(index + 1)" />
+            <el-button :icon="Plus" circle @click="handleAddAction(index + 1)" />
           </template>
         </el-form>
           <AddStage
             :visible="showAddActionDialog"
             :title="addActionDialogTitle"
             :action-name="newActionName"
+            :insert-position="currentInsertIndex"
             @update:visible="(value: boolean) => showAddActionDialog = value"
             @confirm="confirmAddAction"
             @cancel="handleDialogCancel"
@@ -30,9 +31,14 @@
             @confirm="confirmEditAction"
             @cancel="handleDialogCancel"
           ></EditStage>
-      <div class="form-actions">
+        <div class="form-actions">
         <el-button @click="handleCancel">取消</el-button>
         <el-button type="primary" @click="handleSubmit">提交</el-button>
+      </div>
+
+      <div class="pipeline-run-container">
+        <PipelineRun  
+        :pipeline-stages="pipelineActionsDefault"/>
       </div>
   </div>
 </template>
@@ -41,9 +47,10 @@
 import { ref, reactive, defineEmits, defineProps, toRefs } from 'vue';
 import axios from 'axios';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
-import { CirclePlus, EditPen, Operation } from '@element-plus/icons-vue';
+import { Plus, EditPen, Operation } from '@element-plus/icons-vue';
 import AddStage from './stages/AddStage.vue';
 import EditStage from './stages/EditStage.vue';
+import PipelineRun from './PipelineRun.vue';
 
 import type { Pipeline, Pipeline_stages, Pipeline_job } from '@/types/pipeline';
 
@@ -51,16 +58,15 @@ const emit = defineEmits(['cancel', 'success']);
 
 const state = reactive({
   resultStagesData: null as Pipeline_stages[] | null,
-  resultJobsData: null as Pipeline_job[] | null,
+  resultJobsData: null as Pipeline_job | null,
 })
 
 const { resultStagesData, resultJobsData } = toRefs(state)
 
 
-const pipelineActionsDefault = ref([
-  { name: '构建' }
+const pipelineActionsDefault = ref<Pipeline_stages[]>([
+  { group_name: '构建' }
 ]);
-
 
 const currentInsertIndex = ref(0);
 const showAddActionDialog = ref(false);
@@ -72,6 +78,7 @@ const editActionDialogTitle = ref('编辑');
 
 const props = defineProps<{
   componentId: string;
+  serviceTree: string;
 }>();
 
 // 添加新操作的处理函数
@@ -85,7 +92,7 @@ const handleAddAction = (index: number) => {
 const handleEditAction = (index: number) => {
   currentInsertIndex.value = index;
   showEditActionDialog.value = true;
-  editActionName.value = pipelineActionsDefault.value[index].name;
+  editActionName.value = pipelineActionsDefault.value[index].group_name;
 };
 
 // 确认添加新操作
@@ -96,9 +103,21 @@ const confirmAddAction = (newActionName: string) => {
     return;
   }
 
-  // 添加新操作到数组
-  pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, {
-    name: newActionName.trim()
+  // 创建新stage对象，暂不设置group_order
+  const newStage: Pipeline_stages = {
+    group_name: newActionName.trim(),
+    group_order: 0, // 临时值，将在排序时更新
+    stage_name: newActionName.trim() + '1',
+    stage_order: 1,
+    pipeline_jobs: { command: '', status: '' }
+  };
+
+  // 插入到指定位置
+  pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, newStage);
+
+  // 重新计算所有group_order（从1开始递增）
+  pipelineActionsDefault.value.forEach((stage, index) => {
+    stage.group_order = index + 1;
   });
 
   showAddActionDialog.value = false;
@@ -110,7 +129,11 @@ const confirmEditAction = (editActionName: string) => {
     ElMessage.error('请输入操作名称');
     return;
   }
-  pipelineActionsDefault.value[currentInsertIndex.value].name = editActionName.trim();
+  pipelineActionsDefault.value[currentInsertIndex.value].group_name = editActionName.trim();
+  // 接收addStage、editStage的参数
+  pipelineActionsDefault.value[currentInsertIndex.value].stage_name = 
+  pipelineActionsDefault.value[currentInsertIndex.value].pipeline_jobs.command = 
+
   showEditActionDialog.value = false;
   ElMessage.success('操作编辑成功');
 }
@@ -154,7 +177,7 @@ const handleSubmit = async () => {
     const resultTableData: Omit<Pipeline, 'id'> = {
       name: formData.name,
       component_id: props.componentId,
-      service_tree: '', 
+      service_tree: props.serviceTree, 
       pipeline_stages: resultStagesData.value as Pipeline_stages[]
     };
 
@@ -186,5 +209,11 @@ const handleSubmit = async () => {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 30px;
+}
+
+.pipeline-run-container {
+  margin-top: 30px;
+  padding: 20px;
+  border-top: 1px dashed #e8e8e8;
 }
 </style>

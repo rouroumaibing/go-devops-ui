@@ -232,7 +232,7 @@ const handleNodeClick = async (data: ServiceTree) => {
 
 const goToComponentPage = () => {
   if (componentDetail.value) {
-    router.push({ path: '/service', query: { ...route.query, componentId: componentDetail.value.id } })
+    router.push({ path: '/service', query: { ...route.query, componentId: componentDetail.value.id, serviceTree: componentDetail.value.service_tree } })
   }
 }
 

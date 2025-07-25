@@ -6,13 +6,6 @@
     <el-form-item label="测试报告路径" prop="reportPath">
       <el-input v-model="testConfig.reportPath" placeholder="例如: ./test-report"></el-input>
     </el-form-item>
-    <el-form-item label="测试类型">
-      <el-checkbox-group v-model="testConfig.testTypes">
-        <el-checkbox label="单元测试"></el-checkbox>
-        <el-checkbox label="集成测试"></el-checkbox>
-        <el-checkbox label="E2E测试"></el-checkbox>
-      </el-checkbox-group>
-    </el-form-item>
   </el-form>
 </template>
 

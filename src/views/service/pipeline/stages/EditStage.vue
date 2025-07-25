@@ -24,11 +24,11 @@
       ></el-option>
     </el-select>
     
-    <!-- 动态组件显示区域 -->
     <component 
       :is="currentStageComponent"
       v-if="selectedStageType"
       style="margin-top: 15px;"
+      @update:config="handleStageConfigUpdate($event, selectedStageType)"
     ></component>
     
     <template #footer>
@@ -40,18 +40,25 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch, computed } from 'vue';
-// 导入需要的阶段组件
 import BuildStage from './BuildStage.vue';
 import CheckPointStage from './CheckPointStage.vue';
 import TestStage from './TestStage.vue';
+import { StageType } from '@/types/pipeline-stagetype'
 
-// 定义阶段类型选项
-const StageType = ref([ 
-  { name: '构建', value: 'build' }, 
-  { name: '人工卡点', value: 'checkpoint' }, 
-  { name: '部署', value: 'deploy' }, 
-  { name: '测试', value: 'test' } 
-]);
+// 添加阶段配置存储
+const stageConfig = ref<{
+  build?: {
+    buildCommand: string;
+    imageName: string;
+    buildDir: string;
+  };
+  checkpoint?: {
+    checkpointName: string;
+  };
+  test?: {
+    reportPath: string;
+  }
+}>({});
 
 // 选中的阶段类型
 const selectedStageType = ref('');
@@ -61,7 +68,7 @@ const props = defineProps({
   title: { type: String, default: '编辑阶段' },
   actionName: String,
   placeholder: { type: String, default: '请输入阶段名称' },
-  stageId: Number // 新增stageId prop用于编辑已有阶段
+  stageId: Number
 });
 
 const emits = defineEmits(['update:visible', 'confirm', 'cancel']);
@@ -96,8 +103,18 @@ const currentStageComponent = computed(() => {
   }
 });
 
+const handleStageConfigUpdate = (config: any, stageType: string) => {
+if (stageType === 'build' || stageType === 'checkpoint' || stageType === 'test') {
+  (stageConfig.value as any)[stageType] = config;
+}
+};
+
 const handleConfirm = () => {
-  emits('confirm', actionName.value ? actionName.value.trim() : '');
+  emits('confirm', {
+    name: actionName.value ? actionName.value.trim() : '',
+    type: selectedStageType.value,
+    config: selectedStageType.value in stageConfig.value ? stageConfig.value[selectedStageType.value as keyof typeof stageConfig.value] : undefined
+  });
   emits('update:visible', false);
   visible.value = false;
 }

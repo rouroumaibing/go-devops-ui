@@ -4,6 +4,11 @@
     :title="title"
     width="30%"
   >
+    <el-input
+    v-model="actionName"
+    :placeholder="placeholder"
+    @keyup.enter="handleConfirm"
+    ></el-input>
       <!-- 添加阶段类型选择器 -->
     <el-select 
       v-model="selectedStageType"
@@ -23,11 +28,6 @@
       v-if="selectedStageType"
       style="margin-top: 15px;"
     ></component>
-    <el-input
-      v-model="actionName"
-      :placeholder="placeholder"
-      @keyup.enter="handleConfirm"
-    ></el-input>
     <template #footer>
       <el-button @click="handleCancel">取消</el-button>
       <el-button type="primary" @click="handleConfirm">确认</el-button>
@@ -40,7 +40,7 @@ import { defineProps, defineEmits, ref, watch, computed } from 'vue';
 import BuildStage from './BuildStage.vue';
 import CheckPointStage from './CheckPointStage.vue';
 import TestStage from './TestStage.vue';
-import StageType from './EditStage.vue';
+import { StageType } from '@/types/pipeline-stagetype'
 
 const props = defineProps({
   visible: Boolean,

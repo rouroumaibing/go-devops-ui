@@ -10,23 +10,23 @@ export interface Pipeline {
 
 export interface Pipeline_stages {
   id?: string;
-  group_id: string;
+  group_id?: string;
   group_name: string;
-  group_order: number;
-  stage_name: string;
-  stage_order: number;
-  pipeline_id: string;
+  group_order?: number;
+  stage_name?: string;
+  stage_order?: number;
+  pipeline_id?: string;
   created_at?: string;
   updated_at?: string;
-  pipeline_jobs: Pipeline_job;
+  pipeline_jobs?: Pipeline_job;
 }
 
 export interface Pipeline_job{
   id?: string;
-  pipeline_id: string;
-  stage_id: string;
-  command: string;
-  status: string;
+  pipeline_id?: string;
+  stage_id?: string;
+  command?: string;
+  status?: string;
   created_at?: string;
   updated_at?: string;  
 }

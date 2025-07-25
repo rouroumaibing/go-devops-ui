@@ -8,6 +8,7 @@
         ref="createPipelineFormRef"
         :initial-form-data="{}"
         :component-id="componentId || ''"
+        :service-tree="serviceTree || ''"
          @cancel="isCreateMode = false"
       />
     </div>
@@ -49,7 +50,10 @@
       </el-row>
 
       <div class="pipeline-run-container">
-        <PipelineRun v-if="selectedPipelineId" :pipeline-id="selectedPipelineId" />
+        <PipelineRun 
+          v-if="selectedPipelineId && pipelineList.length > 0"
+          :pipeline-stages="pipelineList.find(p => p.id === selectedPipelineId)?.pipeline_stages ?? []"
+        />
         <el-empty v-else description="请选择流水线以查看运行状态"></el-empty>
       </div>
     </div>
@@ -92,6 +96,7 @@ const loading = ref(false);
 const error = ref('');
 const router = useRoute();
 const componentId = ref<string | undefined>(undefined);
+const serviceTree = ref<string | undefined>(undefined);
 const selectedPipelineId = ref<string | undefined>(undefined);
 const isCreateMode = ref(false);
 const formData = ref<PipelineFormData>({ name: '', type: '', group: '' });
@@ -144,14 +149,15 @@ const fetchPipelines = async (componentId: string) => {
 
 onMounted(async () => {
   const queryComponentId = router.query.componentId;
+  const queryServiceTree = router.query.serviceTree;
   componentId.value = typeof queryComponentId === 'string' ? queryComponentId : undefined;
   pipelineList.value = await fetchPipelines(String(queryComponentId));
+  serviceTree.value = typeof queryServiceTree === 'string' ? queryServiceTree : undefined;
 });
 
 watch(
   () => router.query.componentId,
   (newComponentId) => {
-    // 当componentId变化时重新获取流水线数据
     fetchPipelines(String(newComponentId)); 
   }
 );
