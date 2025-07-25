@@ -18,7 +18,7 @@
             :data="treeData"
             :props="{ value: 'id', label: 'name', children: 'children' }"
             :filter-method="filterMethod"
-            @node-click="(data: TreeNodeData) => handleNodeClick(data as treeItem)"
+            @node-click="(data: TreeNodeData) => handleNodeClick(data as ServiceTree)"
             :default-expanded-keys="expandedKeys"
             :indent="16"
           >
@@ -149,32 +149,10 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElTreeV2, TreeNodeData, ElInput, ElButton, ElIcon, ElEmpty,  ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
+import { ServiceTree, Component } from '@/types/servicetree'
 
-interface treeItem {
-  id: string
-  name: string
-  full_path: string
-  node_type: 'category' | 'subcategory' | 'service' 
-  service_id?: string
-  parent_id?: string
-  level: number
-  description?: string
-  children?: treeItem[]
-}
 
-interface componentData {
-  id?: string;
-  name: string;
-  service_tree: string;
-  owner: string;
-  description?: string;
-  repo_url: string;
-  repo_branch: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-const treeRef = ref<ComponentPublicInstance<typeof ElTreeV2, { data: treeItem[] }>>()
+const treeRef = ref<ComponentPublicInstance<typeof ElTreeV2, { data: ServiceTree[] }>>()
 const addNodeFormRef = ref<ComponentPublicInstance<typeof ElForm>>()
 const treeContainer = ref<HTMLDivElement | null>(null)
 const treeHeight = ref(0)
@@ -189,11 +167,11 @@ const updateTreeHeight = () => {
 
 const state = reactive({
   query: '',
-  treeData: [] as treeItem[],
+  treeData: [] as ServiceTree[],
   loading: false,
-  componentDetail: null as componentData | null,
+  componentDetail: null as Component | null,
   addNodeDialogVisible: false,
-  currentParentNode: null as treeItem | null,
+  currentParentNode: null as ServiceTree | null,
   expandedKeys: [] as number[]
 })
 
@@ -238,7 +216,7 @@ const onQueryChanged = (query: string) => {
 }
 
 const filterMethod = (query: string, node: TreeNodeData) => {
-  const treeNode = node as unknown as { data: treeItem };
+  const treeNode = node as unknown as { data: ServiceTree };
   if (!treeNode.data) return false;
   const matchesName = treeNode.data.name.toLowerCase().includes(query.toLowerCase());
   const matchesPath = treeNode.data.full_path?.toLowerCase().includes(query.toLowerCase()) || false;
@@ -246,7 +224,7 @@ const filterMethod = (query: string, node: TreeNodeData) => {
 }
 
 // 节点点击处理
-const handleNodeClick = async (data: treeItem) => {
+const handleNodeClick = async (data: ServiceTree) => {
     if (data.node_type === 'service' && data.service_id) {
     const componentDetail = await fetchComponentDetail(data.service_id);
   }
@@ -259,7 +237,7 @@ const goToComponentPage = () => {
 }
 
 // 保留ref版本的表单定义并确保命名唯一
-const newServiceTreeNodeForm = ref<{name: string; node_type: 'category' | 'subcategory' | 'service' ;  description?: string; components: componentData;}>({
+const newServiceTreeNodeForm = ref<{name: string; node_type: 'category' | 'subcategory' | 'service' ;  description?: string; components: Component;}>({
   name: '',
   node_type: 'service',
   description: undefined,
@@ -274,7 +252,7 @@ const newServiceTreeNodeForm = ref<{name: string; node_type: 'category' | 'subca
 });
 
 // 显示添加节点对话框时初始化组件数据
-const showAddNodeDialog = (parentNode: treeItem) => {
+const showAddNodeDialog = (parentNode: ServiceTree) => {
   currentParentNode.value = parentNode;
   newServiceTreeNodeForm.value = {
     name: '',
@@ -307,7 +285,7 @@ const addChildNode = async () => {
   }
 
   // 创建新节点数据（不含临时ID）
-  const newNodeData: Omit<treeItem, 'id'> = {
+  const newNodeData: Omit<ServiceTree, 'id'> = {
     name: newServiceTreeNodeForm.value.name,
     node_type: newServiceTreeNodeForm.value.node_type,
     level: newServiceTreeNodeForm.value.node_type === 'category' ? currentParentNode.value.level : currentParentNode.value.level + 1,
@@ -321,7 +299,7 @@ const addChildNode = async () => {
     description: newServiceTreeNodeForm.value.description,
   }
 
-  const newComponentData: Omit<componentData, 'id'> = {
+  const newComponentData: Omit<Component, 'id'> = {
     name: newServiceTreeNodeForm.value.name,
     service_tree: newNodeData.full_path,
     description: newServiceTreeNodeForm.value.description,
@@ -380,7 +358,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateTreeHeight)
 })
 
-const generateDefaultTree = (): treeItem[] => [
+const generateDefaultTree = (): ServiceTree[] => [
   {
     name: 'DevOps',
     full_path: 'DevOps',

@@ -6,7 +6,7 @@
         </el-form-item>
         
           <el-button :icon="CirclePlus" circle @click="handleAddAction(0)"/>
-          <template v-for="(action, index) in pipelineActions" :key="action.name">
+          <template v-for="(action, index) in pipelineActionsDefault" :key="action.name">
             <el-button size="large" round text bg @click="handleEditAction(index)">{{ action.name }}
             <el-icon><EditPen /></el-icon>
             <el-icon><Operation /></el-icon>
@@ -38,23 +38,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, defineEmits, defineProps } from 'vue';
+import { ref, reactive, defineEmits, defineProps, toRefs } from 'vue';
 import axios from 'axios';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { CirclePlus, EditPen, Operation } from '@element-plus/icons-vue';
 import AddStage from './stages/AddStage.vue';
 import EditStage from './stages/EditStage.vue';
-import Pipeline from './PipelineManage.vue';
-import Pipeline_stages from './PipelineManage.vue';
-import Pipeline_job  from './PipelineManage.vue';
+
+import type { Pipeline, Pipeline_stages, Pipeline_job } from '@/types/pipeline';
 
 const emit = defineEmits(['cancel', 'success']);
 
-const pipelineActions = ref([
-  { name: '构建' },
-  { name: '测试' },
-  { name: '部署' }
+const state = reactive({
+  resultStagesData: null as Pipeline_stages[] | null,
+  resultJobsData: null as Pipeline_job[] | null,
+})
+
+const { resultStagesData, resultJobsData } = toRefs(state)
+
+
+const pipelineActionsDefault = ref([
+  { name: '构建' }
 ]);
+
 
 const currentInsertIndex = ref(0);
 const showAddActionDialog = ref(false);
@@ -79,7 +85,7 @@ const handleAddAction = (index: number) => {
 const handleEditAction = (index: number) => {
   currentInsertIndex.value = index;
   showEditActionDialog.value = true;
-  editActionName.value = pipelineActions.value[index].name;
+  editActionName.value = pipelineActionsDefault.value[index].name;
 };
 
 // 确认添加新操作
@@ -91,7 +97,7 @@ const confirmAddAction = (newActionName: string) => {
   }
 
   // 添加新操作到数组
-  pipelineActions.value.splice(currentInsertIndex.value, 0, {
+  pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, {
     name: newActionName.trim()
   });
 
@@ -104,7 +110,7 @@ const confirmEditAction = (editActionName: string) => {
     ElMessage.error('请输入操作名称');
     return;
   }
-  pipelineActions.value[currentInsertIndex.value].name = editActionName.trim();
+  pipelineActionsDefault.value[currentInsertIndex.value].name = editActionName.trim();
   showEditActionDialog.value = false;
   ElMessage.success('操作编辑成功');
 }
@@ -142,48 +148,22 @@ const handleDialogCancel = () => {
 };
 
 
-const fetchPipelineStagesDetail = async (id: string, stage_id: string) => {
-  try {
-    loading.value = true;
-    const response = await axios.get(`/api/pipeline/${id}/stage/${stage_id}`);
-    pipelineStagesDetail.value = response.data;
-  } catch (error) {
-    ElMessage.error('Failed to fetch component detail, please try again');
-  } finally {
-    loading.value = false;
-  }
-  return pipelineStagesDetail.value
-};
-
 const handleSubmit = async () => {
   if (!pipelineForm.value) return;
+
+    const resultTableData: Omit<Pipeline, 'id'> = {
+      name: formData.name,
+      component_id: props.componentId,
+      service_tree: '', 
+      pipeline_stages: resultStagesData.value as Pipeline_stages[]
+    };
 
   try {
     const valid = await pipelineForm.value.validate();
     if (valid) {
-     // 构建符合Pipeline接口的请求数据
-      const pipelineData: Omit<typeof Pipeline, 'id'> = {
-        name: formData.name,
-        component_id: props.componentId,
-        service_tree: '', 
-        pipeline_stages: pipelineActions.value.map((action, index) => ({
-          group_id: action.group_id,
-          group_name: action.group_name,
-          group_order: index + 1,
-          stage_name: action.stage_name,
-          stage_order: 1,
-          pipeline_id: '',
-          pipeline_jobs: {
-            pipeline_id: '',
-            stage_id: '',
-            command: '', 
-            status: 'pending',
-          }
-        }))
-      };
 
       // 发送创建流水线的POST请求
-      const response = await axios.post('/api/pipeline', pipelineData);
+      const response = await axios.post('/api/pipeline', resultTableData);
       ElMessage.success('流水线创建成功');
       emit('success', response.data);
       emit('cancel');

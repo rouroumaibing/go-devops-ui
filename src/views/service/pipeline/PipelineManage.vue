@@ -65,38 +65,7 @@ import { useRouter, useRoute } from 'vue-router';
 import PipelineCreate from './PipelineCreate.vue';
 import PipelineRun from './PipelineRun.vue';
 
-interface Pipeline {
-  id?: string;
-  name: string;
-  component_id: string;
-  service_tree: string;
-  created_at?: string;
-  updated_at?: string;
-  pipeline_stages: Pipeline_stages[];
-}
-
-interface Pipeline_stages {
-  id?: string;
-  group_id: string;
-  group_name: string;
-  group_order: number;
-  stage_name: string;
-  stage_order: number;
-  pipeline_id: string;
-  created_at?: string;
-  updated_at?: string;
-  pipeline_jobs: Pipeline_job;
-}
-
-interface Pipeline_job{
-  id?: string;
-  pipeline_id: string;
-  stage_id: string;
-  command: string;
-  status: string;
-  created_at?: string;
-  updated_at?: string;  
-}
+import type { Pipeline } from '@/types/pipeline';
 
 interface PipelineFormData {
   name: string;
@@ -113,11 +82,9 @@ interface CreatePipelineFormExposed {
 }
 const state = reactive({
   pipelineDetail: null as Pipeline | null,
-  pipelineStagesDetail: null as Pipeline_stages | null,
-  pipelineJobsDetail: null as Pipeline_job | null,
 });
 
-const { pipelineDetail, pipelineStagesDetail, pipelineJobsDetail } = toRefs(state);
+const { pipelineDetail } = toRefs(state);
 
 const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
 const pipelineList = ref<Pipeline[]>([]);
@@ -150,7 +117,6 @@ const enterCreateMode = () => {
   }
   
 };
-
 
 const handleEdit = (pipeline: Pipeline) => {
   console.log('编辑流水线:', pipeline);
