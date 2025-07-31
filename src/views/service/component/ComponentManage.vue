@@ -133,14 +133,14 @@ const submitEditForm = async (id: string) => {
   if (!editFormRef.value) return;
   try {
     await editFormRef.value.validate();
-    // 调用更新接口
-    console.log("asdasdasd:", id)
-    console.log("asdasdasd:", editForm.value)
-
-    await putComponentData(id, editForm.value as componentData);
-    // 关闭对话框
-    editDialogVisible.value = true;
-    ElMessage.success('组件更新成功');
+    //继承表单里的组件ID
+    editForm.value.id=id;
+    const success = await putComponentData(id, editForm.value as componentData);
+    if (success) {
+      ElMessage.success('组件更新成功');
+      editDialogVisible.value = false;
+      fetchComponentData(id);
+    }
   } catch (error) {
     ElMessage.error('表单验证失败，请检查输入');
   }
@@ -175,10 +175,11 @@ const putComponentData = async (id: string, data: componentData) => {
   try {
     const response =  await axios.put(`/api/component/${id}`, data);
     componentDetail.value = response.data;
+    return true;
   } catch (error) {
     ElMessage.error('更新组件详情失败');
+    return false;
   }
-  return componentDetail.value
 }
 
 </script>
