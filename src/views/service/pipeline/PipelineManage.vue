@@ -1,62 +1,70 @@
 <template>
   <el-card class="pipeline-orchestration-container">
-    <template #header v-if="!isCreateMode">
-      <el-button type="primary" icon="Plus" @click="enterCreateMode">创建流水线</el-button>
+    <template #header>
+      <el-button v-if="!isCreateMode" type="primary" icon="Plus" @click="enterCreateMode">创建流水线</el-button>
     </template>
-    <div v-if="isCreateMode">
-      <PipelineCreate
-        ref="createPipelineFormRef"
-        :initial-form-data="{}"
-        :component-id="componentId || ''"
-        :service-tree="serviceTree || ''"
-         @cancel="isCreateMode = false"
-      />
-    </div>
 
-    <div v-else>
-      <el-skeleton v-if="loading" :rows="5" border stripe class="table-skeleton"></el-skeleton>
-      <el-alert v-else-if="error" type="error" description="获取流水线列表失败，请重试" show-icon></el-alert>
-      <el-empty v-else-if="pipelineList.length === 0" description="暂无流水线数据"></el-empty>
+    <div v-if="!isCreateMode">
+      <div>
+        <el-skeleton v-if="loading" :rows="5" border stripe class="table-skeleton"></el-skeleton>
+        <el-alert v-else-if="error" type="error" description="获取流水线列表失败，请重试" show-icon></el-alert>
+        <el-empty v-else-if="pipelineList.length === 0" description="暂无流水线数据"></el-empty>
 
-      <el-row v-else class="layout-container">
-        <el-col :span="6" class="left-panel">
-          <el-select v-model="selectedPipelineId" placeholder="选择流水线" style="width: 100%">
-            <el-option
-              v-for="item in pipelineList"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id || ''"
-            />
-          </el-select>
-        </el-col>
+        <el-row v-else class="layout-container">
+          <el-col :span="6" class="left-panel">
+            <el-select v-model="selectedPipelineId" placeholder="选择流水线" style="width: 100%">
+              <el-option
+                v-for="item in pipelineList"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id || ''"
+              />
+            </el-select>
+          </el-col>
 
-        <!-- 右侧任务管理区域 -->
-        <el-col :span="18" class="right-panel">
-          <el-table v-if="selectedPipeline" :data="[selectedPipeline]" border stripe>
-            <el-table-column type="index" label="序号" width="80"></el-table-column>
-            <el-table-column prop="name" label="流水线名称" width="180"></el-table-column>
-            <el-table-column prop="component_id" label="所属组件" width="180"></el-table-column>
-            <el-table-column prop="service_tree" label="所属服务"></el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
-            <el-table-column label="操作" width="250">
-              <template #default="scope">
-                <el-button type="primary" size="small" @click="handleRun(scope.row)">运行</el-button>
-                <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-empty v-else description="请选择流水线"></el-empty>
-        </el-col>
-      </el-row>
+          <!-- 右侧任务管理区域 -->
+          <el-col :span="18" class="right-panel">
+            <el-table v-if="selectedPipeline" :data="[selectedPipeline]" border stripe>
+              <el-table-column type="index" label="序号" width="80"></el-table-column>
+              <el-table-column prop="name" label="流水线名称" width="180"></el-table-column>
+              <el-table-column prop="component_id" label="所属组件" width="180"></el-table-column>
+              <el-table-column prop="service_tree" label="所属服务"></el-table-column>
+              <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
+              <el-table-column label="操作" width="250">
+                <template #default="scope">
+                  <el-button type="primary" size="small" @click="handleRun(scope.row)">运行</el-button>
+                  <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-else description="请选择流水线"></el-empty>
+          </el-col>
+        </el-row>
 
-      <div class="pipeline-run-container">
-        <PipelineRun 
-          v-if="selectedPipelineId && pipelineList.length > 0"
-          :pipeline-stages="pipelineList.find(p => p.id === selectedPipelineId)?.pipeline_stages ?? []"
-        />
-        <el-empty v-else description="请选择流水线以查看运行状态"></el-empty>
+        <div class="pipeline-run-container">
+          <PipelineRun 
+            v-if="selectedPipelineId && pipelineList.length > 0"
+            :pipeline-stages="pipelineList.find(p => p.id === selectedPipelineId)?.pipeline_stages ?? []"
+          />
+          <el-empty v-else description="请选择流水线以查看运行状态"></el-empty>
+        </div>
       </div>
     </div>
+
+    <el-drawer 
+      v-model="isCreateMode"
+      direction="rtl"
+      title="创建流水线"
+      size="80%"
+    >
+      <PipelineCreate
+        ref="createPipelineFormRef"
+        :initial-form-data="formData"
+        :component-id="componentId || ''"
+        :service-tree="serviceTree || ''"
+        @cancel="isCreateMode = false"
+      />
+    </el-drawer>
   </el-card>
 </template>
 
