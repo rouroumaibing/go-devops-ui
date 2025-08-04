@@ -25,7 +25,7 @@ export interface Pipeline_job{
   id?: string;
   pipeline_id?: string;
   stage_id?: string;
-  command?: string;
+  parameters?: string;
   status?: string;
   created_at?: string;
   updated_at?: string;  

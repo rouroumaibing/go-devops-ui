@@ -106,10 +106,10 @@ const confirmAddAction = (newActionName: string) => {
   // 创建新stage对象，暂不设置group_order
   const newStage: Pipeline_stages = {
     group_name: newActionName.trim(),
-    group_order: 0, // 临时值，将在排序时更新
+    group_order: 0, 
     stage_name: newActionName.trim() + '1',
     stage_order: 1,
-    pipeline_jobs: { command: '', status: '' }
+    pipeline_jobs: { parameters: '', status: '' }
   };
 
   // 插入到指定位置
@@ -131,8 +131,7 @@ const confirmEditAction = (editActionName: string) => {
   }
   pipelineActionsDefault.value[currentInsertIndex.value].group_name = editActionName.trim();
   // 接收addStage、editStage的参数
-  pipelineActionsDefault.value[currentInsertIndex.value].stage_name = 
-  pipelineActionsDefault.value[currentInsertIndex.value].pipeline_jobs.command = 
+ 
 
   showEditActionDialog.value = false;
   ElMessage.success('操作编辑成功');

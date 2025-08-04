@@ -2,7 +2,7 @@
   <el-dialog 
     v-model="visible"
     :title="title"
-    width="30%"
+    width="70%"
   >
     <el-input
     v-model="actionName"
