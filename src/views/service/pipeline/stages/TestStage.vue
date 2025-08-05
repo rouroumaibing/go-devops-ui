@@ -11,15 +11,13 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch } from 'vue';
-import { ElForm } from 'element-plus';
 
-const props = defineProps<{
-  initialConfig?: {
-    testCommand?: string;
-    reportPath?: string;
-    testTypes?: string[];
+const props = defineProps({
+  config: {
+    type: Object,
+    default: () => ({})
   }
-}>();
+});
 
 const emits = defineEmits<{
   (e: 'update:config', config: {
@@ -29,17 +27,28 @@ const emits = defineEmits<{
   }): void
 }>();
 
-const testForm = ref<InstanceType<typeof ElForm>>();
 const testConfig = ref<{
   testCommand: string;
   reportPath: string;
   testTypes: string[];
 }>({
-  testCommand: props.initialConfig?.testCommand || '',
-  reportPath: props.initialConfig?.reportPath || '',
-  testTypes: props.initialConfig?.testTypes || []
+  testCommand: props.config?.testCommand || '',
+  reportPath: props.config?.reportPath || '',
+  testTypes: props.config?.testTypes || []
 });
 
+// 监听props.config变化，确保外部更新时能同步到内部状态
+watch(() => props.config, (newConfig) => {
+  if (newConfig) {
+    testConfig.value = {
+      testCommand: newConfig.testCommand || '',
+      reportPath: newConfig.reportPath || '',
+      testTypes: newConfig.testTypes || []
+    };
+  }
+}, { deep: true });
+
+// 监听内部配置变化并通知父组件
 watch(testConfig, (newVal) => {
   emits('update:config', newVal);
 }, { deep: true });

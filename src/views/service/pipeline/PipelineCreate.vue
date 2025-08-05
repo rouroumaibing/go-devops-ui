@@ -124,15 +124,11 @@ const confirmAddAction = (newActionName: string) => {
   ElMessage.success('操作添加成功');
 };
 
-const confirmEditAction = (editActionName: string) => {
-  if (!editActionName.trim()) {
-    ElMessage.error('请输入操作名称');
-    return;
-  }
-  pipelineActionsDefault.value[currentInsertIndex.value].group_name = editActionName.trim();
-  // 接收addStage、editStage的参数
- 
-
+const confirmEditAction = (stages: any[]) => {
+  // Handle the stages data from EditStage
+  console.log('Received stages:', stages);
+  // Add your logic to update pipelineActionsDefault with the new stages
+  
   showEditActionDialog.value = false;
   ElMessage.success('操作编辑成功');
 }

@@ -33,7 +33,7 @@
       
       <!-- 右侧内容 - 占70%宽度 -->
       <el-col :span="17">
-       
+        
         <!-- 添加阶段类型选择器 -->
         <el-select 
           v-model="selectedStageType"
@@ -52,7 +52,8 @@
           :is="currentStageComponent"
           v-if="selectedStageType"
           style="margin-top: 15px;"
-          @update:config="handleStageConfigUpdate($event, selectedStageType)"
+          :config="currentStageConfig"
+          @update:config="handleStageConfigUpdate"
         ></component>
       </el-col>
     </el-row>
@@ -65,65 +66,55 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits, ref, watch, computed} from 'vue';
+import { defineProps, defineEmits, ref, watch, computed, onMounted, nextTick } from 'vue';
 import { ElMessageBox } from 'element-plus';
 import BuildStage from './BuildStage.vue';
 import CheckPointStage from './CheckPointStage.vue';
 import TestStage from './TestStage.vue';
-import { StageType } from '@/types/pipeline-stagetype'
+import { StageType } from '@/types/pipeline-stagetype';
 
-// 添加阶段配置存储
-const stageConfig = ref<{
-  build?: {
-    buildCommand: string;
-    imageName: string;
-    buildDir: string;
-  };
-  checkpoint?: {
-    checkpointName: string;
-  };
-  test?: {
-    reportPath: string;
-  }
-}>({});
+// 定义类型
+interface StageNode {
+  stage_order: number;
+  label: string;
+}
 
-// 选中的阶段类型
-const selectedStageType = ref('');
-// 选中的节点key - 现在存储的是节点的stage_order
+interface StageConfig {
+  type: string;
+  config: Record<string, any>;
+}
+
+// 响应式数据
+const stageConfig = ref<Record<string, StageConfig>>({});
+const selectedStageType = ref<string>('build');
 const selectedKeys = ref<string[]>([]);
-// 跟踪当前选中的节点对象
-const currentNode = ref<any>(null);
+const currentNode = ref<StageNode | null>(null);
+const currentStageConfig = ref<Record<string, any>>({});
+const menuData = ref<StageNode[]>([
+  {
+    stage_order: 0,
+    label: '构建'
+  }
+]);
 
+// Props和Emits
 const props = defineProps({
   visible: Boolean,
   title: { type: String, default: '编辑阶段' },
   stageId: Number
 });
+const visible = ref<boolean>(props.visible);
+const defaultProps = { label: 'label' };
 
-const emits = defineEmits(['update:visible', 'confirm', 'cancel']);
-const visible = ref(props.visible);
 
-// 同步visible状态
-watch(() => props.visible, (val) => {
-  visible.value = val;
-});
+const emits = defineEmits<{
+  (e: 'update:visible', value: boolean): void;
+  (e: 'confirm', stages: Array<{ name: string; type: string; config: any; stage_order: number }>): void;
+  (e: 'cancel'): void;
+}>();
 
-watch(visible, (val) => {
-  emits('update:visible', val);
-});
 
-// 监听阶段类型变化，更新选中节点的label
-watch(selectedStageType, (newVal) => {
-  if (newVal && currentNode.value) {
-    const stageTypeName = StageType.find(type => type.value === newVal)?.name || '';
-    // 更新当前选中节点的label
-    currentNode.value.label = stageTypeName;
-    // 触发视图更新
-    menuData.value = [...menuData.value];
-  }
-});
-
-// 根据选中的阶段类型动态切换组件
+// 计算属性 - 动态切换组件
 const currentStageComponent = computed(() => {
   switch(selectedStageType.value) {
     case 'build':
@@ -137,112 +128,109 @@ const currentStageComponent = computed(() => {
   }
 });
 
-const handleStageConfigUpdate = (config: any, stageType: string) => {
-if (stageType === 'build' || stageType === 'checkpoint' || stageType === 'test') {
-  (stageConfig.value as any)[stageType] = config;
-}
+// 方法 - 更新配置
+const handleStageConfigUpdate = (config: Record<string, any>): void => {
+  if (currentNode.value) {
+    const stageOrder = currentNode.value.stage_order.toString();
+    stageConfig.value[stageOrder] = {
+      type: selectedStageType.value,
+      config
+    };
+  }
 };
 
-const handleConfirm = () => {
-  // 从StageType中获取选中类型的name
-  const stageTypeName = StageType.find(type => type.value === selectedStageType.value)?.name || '';
-  emits('confirm', {
-    name: stageTypeName,
-    type: selectedStageType.value,
-    config: selectedStageType.value in stageConfig.value ? stageConfig.value[selectedStageType.value as keyof typeof stageConfig.value] : undefined
+// 方法 - 确认
+const handleConfirm = (): void => {
+  const stages = menuData.value.map(node => {
+    const stageOrder = node.stage_order.toString();
+    const stageInfo = stageConfig.value[stageOrder] || { type: '', config: {} };
+    return {
+      name: node.label,
+      type: stageInfo.type,
+      config: stageInfo.config,
+      stage_order: node.stage_order
+    };
   });
+  
+  emits('confirm', stages);
   emits('update:visible', false);
   visible.value = false;
 };
 
-const handleCancel = () => {
+// 方法 - 取消
+const handleCancel = (): void => {
   emits('cancel');
   visible.value = false;
 };
 
-const defaultProps = { label: 'label' };
-
-const handleNodeClick = (data: any) => {
-  console.log('点击节点:', data);
-  // 设置选中节点的stage_order
-  selectedKeys.value = [data.stage_order.toString()];
-  // 保存当前选中的节点对象
-  currentNode.value = data;
+// 方法 - 节点点击
+const handleNodeClick = (data: any, node: any, e: MouseEvent): void => {
+  const stageNode = data as StageNode;
+  selectedKeys.value = [stageNode.stage_order.toString()];
+  currentNode.value = stageNode;
+  
+  const stageType = StageType.find(type => type.name === stageNode.label)?.value || '';
+  if (stageType) {
+    selectedStageType.value = stageType;
+    const stageOrder = stageNode.stage_order.toString();
+    // 使用nextTick确保DOM更新后再加载配置
+    nextTick(() => {
+      currentStageConfig.value = { ...(stageConfig.value[stageOrder]?.config || {}) };
+    });
+  }
 };
 
-// 添加菜单数据和处理函数 - 为节点添加stage_order
-const menuData = ref([
-  {
-    stage_order: 0, // 从0开始
-    label: '构建'
-  }
-]);
-
-// 添加移动、添加和删除节点的方法
-const moveUp = (node: any) => {
-  if (!node || typeof node.stage_order !== 'number') {
-    console.error('无效的节点数据: 缺少stage_order属性');
-    return;
-  }
+// 方法 - 上移节点
+const moveUp = (node: StageNode): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index > 0) {
-    // 交换节点位置
     [menuData.value[index], menuData.value[index - 1]] = [menuData.value[index - 1], menuData.value[index]];
-    // 更新stage_order
     updateStageOrders();
-    // 触发视图更新
     menuData.value = [...menuData.value];
   }
 };
 
-// 修改 moveDown 方法，使用stage_order查找节点
-const moveDown = (node: any) => {
-  if (!node || typeof node.stage_order !== 'number') {
-    console.error('无效的节点数据: 缺少stage_order属性');
-    return;
-  }
+// 方法 - 下移节点
+const moveDown = (node: StageNode): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index !== -1 && index < menuData.value.length - 1) {
-    // 交换节点位置
     [menuData.value[index], menuData.value[index + 1]] = [menuData.value[index + 1], menuData.value[index]];
-    // 更新stage_order
     updateStageOrders();
-    // 触发视图更新
     menuData.value = [...menuData.value];
   }
 };
 
-// 修改 addNode 方法，添加新节点并分配正确的stage_order
-const addNode = (node: any) => {
-  console.log('添加节点:', node);
-  if (!node || typeof node.stage_order !== 'number') {
-    console.error('无效的节点数据: 缺少stage_order属性');
-    return;
-  }
+// 方法 - 添加节点
+const addNode = (node: StageNode): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index !== -1) {
-    // 在当前节点后添加新节点
     menuData.value.splice(index + 1, 0, {
-      stage_order: menuData.value.length, // 临时值，将在updateStageOrders中修正
-      label: `新节点${menuData.value.length + 1}`
+      stage_order: menuData.value.length,
+      label: '构建'
     });
-    // 更新stage_order
+    
     updateStageOrders();
-    // 触发视图更新
     menuData.value = [...menuData.value];
+    
+    const newNode = menuData.value[index + 1];
+    currentNode.value = newNode;
+    selectedKeys.value = [newNode.stage_order.toString()];
+    selectedStageType.value = 'build';
+    
+    const newStageOrder = newNode.stage_order.toString();
+    stageConfig.value[newStageOrder] = {
+      type: 'build',
+      config: {}
+    };
+    
+    currentStageConfig.value = stageConfig.value[newStageOrder].config;
   }
 };
 
-// 修改 deleteNode 方法，使用stage_order查找节点
-const deleteNode = (node: any) => {
-  console.log('删除节点:', node);
-  if (!node || typeof node.stage_order !== 'number') {
-    console.error('无效的节点数据: 缺少stage_order属性');
-    return;
-  }
+// 方法 - 删除节点
+const deleteNode = (node: StageNode): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index !== -1) {
-    // 显示确认弹窗
     ElMessageBox.confirm(
       '确定要删除这个节点吗？',
       '确认删除',
@@ -252,42 +240,84 @@ const deleteNode = (node: any) => {
         type: 'warning',
       }
     ).then(() => {
-      // 用户点击确定，执行删除
       menuData.value.splice(index, 1);
-      // 确保至少保留一个节点
+      
       if (menuData.value.length === 0) {
         menuData.value = [{
           stage_order: 0,
           label: '默认节点'
         }];
       } else {
-        // 更新stage_order
         updateStageOrders();
       }
-      // 如果删除的是当前选中的节点，清除选中状态
-      if (currentNode.value && currentNode.value.stage_order === node.stage_order) {
+      
+      if (currentNode.value?.stage_order === node.stage_order) {
         currentNode.value = null;
         selectedKeys.value = [];
       }
-      // 自动选中第一个节点（如果有）
+      
       if (menuData.value.length > 0) {
         currentNode.value = menuData.value[0];
         selectedKeys.value = [menuData.value[0].stage_order.toString()];
       }
-      // 触发视图更新
+      
       menuData.value = [...menuData.value];
     }).catch(() => {
-      // 用户点击取消，不执行操作
+      // 取消删除
     });
   }
 };
 
-// 添加辅助函数：更新所有节点的stage_order，确保从0开始连续递增
-const updateStageOrders = () => {
+// 方法 - 更新节点顺序
+const updateStageOrders = (): void => {
+  // 保存当前的配置
+  const oldStageConfig = { ...stageConfig.value };
+  // 创建新的配置对象
+  const newStageConfig: Record<string, StageConfig> = {};
+  
   menuData.value.forEach((node, index) => {
+    const oldStageOrder = node.stage_order.toString();
+    // 更新节点的 stage_order 为其在数组中的索引
     node.stage_order = index;
+    const newStageOrder = index.toString();
+    
+    // 如果旧配置中存在该节点的配置，则转移到新键
+    if (oldStageConfig[oldStageOrder]) {
+      newStageConfig[newStageOrder] = oldStageConfig[oldStageOrder];
+    }
   });
+  
+  // 更新配置
+  stageConfig.value = newStageConfig;
 };
+
+// 生命周期 - 挂载
+onMounted(() => {
+  if (menuData.value.length > 0) {
+    currentNode.value = menuData.value[0];
+    selectedKeys.value = [menuData.value[0].stage_order.toString()];
+    const stageOrder = menuData.value[0].stage_order.toString();
+    currentStageConfig.value = stageConfig.value[stageOrder]?.config || {};
+  }
+});
+
+// 监听 - visible状态同步
+watch(() => props.visible, (val) => {
+  visible.value = val;
+});
+
+watch(visible, (val) => {
+  emits('update:visible', val);
+});
+
+// 监听 - 阶段类型变化
+watch(selectedStageType, (newVal) => {
+  if (newVal && currentNode.value) {
+    const stageTypeName = StageType.find(type => type.value === newVal)?.name || '';
+    currentNode.value.label = stageTypeName;
+    menuData.value = [...menuData.value];
+  }
+});
 </script>
 
 <style scoped>

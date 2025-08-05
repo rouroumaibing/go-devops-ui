@@ -24,15 +24,13 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch } from 'vue';
-import { ElForm } from 'element-plus';
 
-const props = defineProps<{
-  initialConfig?: {
-    approver?: string;
-    description?: string;
-    timeoutHours?: number;
+const props = defineProps({
+  config: {
+    type: Object,
+    default: () => ({})
   }
-}>();
+});
 
 const emits = defineEmits<{
   (e: 'update:config', config: {
@@ -42,17 +40,28 @@ const emits = defineEmits<{
   }): void
 }>();
 
-const checkPointForm = ref<InstanceType<typeof ElForm>>();
 const checkPointConfig = ref<{
   approver: string;
   description: string;
   timeoutHours: number;
 }>({
-  approver: props.initialConfig?.approver || '',
-  description: props.initialConfig?.description || '',
-  timeoutHours: props.initialConfig?.timeoutHours || 24
+  approver: props.config?.approver || '',
+  description: props.config?.description || '',
+  timeoutHours: props.config?.timeoutHours || 24
 });
 
+// 监听props.config变化，确保外部更新时能同步到内部状态
+watch(() => props.config, (newConfig) => {
+  if (newConfig) {
+    checkPointConfig.value = {
+      approver: newConfig.approver || '',
+      description: newConfig.description || '',
+      timeoutHours: newConfig.timeoutHours || 24
+    };
+  }
+}, { deep: true });
+
+// 监听内部配置变化并通知父组件
 watch(checkPointConfig, (newVal) => {
   emits('update:config', newVal);
 }, { deep: true });

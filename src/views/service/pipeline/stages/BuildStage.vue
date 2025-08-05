@@ -14,36 +14,29 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch } from 'vue';
-import { ElForm } from 'element-plus';
 
-const props = defineProps<{
-  initialConfig?: {
-    buildCommand?: string;
-    imageName?: string;
-    buildDir?: string;
-  }
-}>();
+const props = defineProps({"config":{"type":Object,"default":()=>({})}});
 
-const emits = defineEmits<{
-  (e: 'update:config', config: {
-    buildCommand: string;
-    imageName: string;
-    buildDir: string;
-  }): void
-}>();
+const emits = defineEmits<{(e:'update:config', config:{buildCommand:string;imageName:string;buildDir:string;}):void}>();
 
-const buildForm = ref<InstanceType<typeof ElForm>>();
-const buildConfig = ref<{
-  buildCommand: string;
-  imageName: string;
-  buildDir: string;
-}>({
-  buildCommand: props.initialConfig?.buildCommand || '',
-  imageName: props.initialConfig?.imageName || '',
-  buildDir: props.initialConfig?.buildDir || ''
+const buildConfig = ref<{buildCommand:string;imageName:string;buildDir:string;}>({
+  buildCommand: props.config?.buildCommand || '',
+  imageName: props.config?.imageName || '',
+  buildDir: props.config?.buildDir || ''
 });
 
-// 监听配置变化并通知父组件
+// 监听props.config变化，确保外部更新时能同步到内部状态
+watch(() => props.config, (newConfig) => {
+  if (newConfig) {
+    buildConfig.value = {
+      buildCommand: newConfig.buildCommand || '',
+      imageName: newConfig.imageName || '',
+      buildDir: newConfig.buildDir || ''
+    };
+  }
+}, { deep: true });
+
+// 监听内部配置变化并通知父组件
 watch(buildConfig, (newVal) => {
   emits('update:config', newVal);
 }, { deep: true });
