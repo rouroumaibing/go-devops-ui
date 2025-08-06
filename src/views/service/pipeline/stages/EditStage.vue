@@ -41,9 +41,9 @@
         >
           <el-option 
             v-for="type in StageType"
-            :key="type.value"
-            :label="type.name"
-            :value="type.value"
+            :key="type.name"
+            :label="type.value"
+            :value="type.name"
           ></el-option>
         </el-select>
         
@@ -74,27 +74,43 @@ import { StageType } from '@/types/pipeline-stagetype';
 import { Pipeline_stages, Pipeline_job } from '@/types/pipeline';
 
 const stageConfig = ref<Record<string, any>>({});
-const selectedStageType = ref<string>('build');
+const selectedStageType = ref<string>('new_group');
 const selectedKeys = ref<string[]>([]);
 const currentNode = ref<Pipeline_stages | null>(null);
 const currentStageConfig = ref<Record<string, any>>({});
-const menuData = ref<Pipeline_stages[]>([
-  {
-    group_name: '构建',
-    stage_order: 0,
-    stage_name: '构建',
-    pipeline_jobs: { parameters: '', status: '' }
+const menuData = ref<Pipeline_stages[]>([]);
+// 初始化menuData的函数
+const initMenuData = () => {
+  // 使用传递的actionName或默认值
+  const groupName = props.actionName || '构建';
+  menuData.value = [
+    {
+      group_name: groupName,
+      stage_order: 0,
+      stage_name: groupName,
+      pipeline_jobs: { parameters: '', status: '' }
+    }
+  ];
+
+  // 设置selectedStageType
+  const defaultStage = menuData.value[0];
+  if (defaultStage) {
+    const stageType = StageType.find(type => type.value === defaultStage.stage_name)?.name || '';
+    if (stageType) {
+      selectedStageType.value = stageType;
+    }
   }
-]);
+};
 
 // Props和Emits
 const props = defineProps({
   visible: Boolean,
   title: { type: String, default: '编辑阶段' },
-  stageId: Number
+  stageId: Number,
+  actionName: String, 
+  groupId: String
 });
 const visible = ref<boolean>(props.visible);
-
 
 const emits = defineEmits<{
   (e: 'update:visible', value: boolean): void;
@@ -158,7 +174,7 @@ const handleNodeClick = (data: any, node: any, e: MouseEvent): void => {
   selectedKeys.value = [stageNode.stage_order?.toString() || ''];
   currentNode.value = stageNode;
   
-  const stageType = StageType.find(type => type.name === stageNode.stage_name)?.value || '';
+  const stageType = StageType.find(type => type.value === stageNode.stage_name)?.name || '';
   if (stageType) {
     selectedStageType.value = stageType;
     const stageOrder = stageNode.stage_order?.toString() || '';
@@ -206,11 +222,11 @@ const addNode = (node: Pipeline_stages): void => {
     const newNode = menuData.value[index + 1];
     currentNode.value = newNode;
     selectedKeys.value = [newNode.stage_order?.toString() || ''];
-    selectedStageType.value = 'build';
+    selectedStageType.value = 'new_group';
     
     const newStageOrder = newNode.stage_order?.toString() || '';
     stageConfig.value[newStageOrder] = {
-      type: 'build',
+      type: 'new_group',
       config: {}
     };
     
@@ -286,6 +302,7 @@ const updateStageOrders = (): void => {
 
 // 生命周期 - 挂载
 onMounted(() => {
+  initMenuData();
   if (menuData.value.length > 0) {
     currentNode.value = menuData.value[0];
     selectedKeys.value = [menuData.value[0].stage_order?.toString() || ''];
@@ -293,6 +310,16 @@ onMounted(() => {
     currentStageConfig.value = stageConfig.value[stageOrder]?.config || {};
   }
 });
+
+// 监听actionName变化，重新初始化menuData
+watch(
+  () => props.actionName,
+  (newActionName) => {
+    if (newActionName) {
+      initMenuData();
+    }
+  }
+);
 
 // 监听 - visible状态同步
 watch(() => props.visible, (val) => {
@@ -306,9 +333,9 @@ watch(visible, (val) => {
 // 监听 - 阶段类型变化
 watch(selectedStageType, (newVal) => {
   if (newVal && currentNode.value) {
-    const stageTypeItem = StageType.find(type => type.value === newVal);
+    const stageTypeItem = StageType.find(type => type.name === newVal);
     if (stageTypeItem) {
-      currentNode.value.stage_name = stageTypeItem.name;
+      currentNode.value.stage_name = stageTypeItem.value;
       // 确保menuData触发更新
       menuData.value = [...menuData.value];
     }
