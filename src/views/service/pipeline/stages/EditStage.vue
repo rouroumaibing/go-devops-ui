@@ -10,7 +10,6 @@
         <el-tree-v2
           style="height: 400px; border: 2px solid #eee"
           :data="menuData"
-          :props="defaultProps"
           @node-click="handleNodeClick"
           v-model:selectedKeys="selectedKeys"
           node-key="stage_order"
@@ -21,7 +20,7 @@
                 <el-icon @click.stop="moveUp(data)" size="16"><Top /></el-icon>
                 <el-icon @click.stop="moveDown(data)" size="16"><Bottom /></el-icon>
               </div>
-              <span>{{ data.label }}</span>
+              <span>{{ data.stage_name }}</span>
               <div class="right-icons">
                 <el-icon @click.stop="addNode(data)" size="16"><Plus /></el-icon>
                 <el-icon @click.stop="deleteNode(data)" size="16"><Minus /></el-icon>
@@ -72,28 +71,19 @@ import BuildStage from './BuildStage.vue';
 import CheckPointStage from './CheckPointStage.vue';
 import TestStage from './TestStage.vue';
 import { StageType } from '@/types/pipeline-stagetype';
+import { Pipeline_stages, Pipeline_job } from '@/types/pipeline';
 
-// 定义类型
-interface StageNode {
-  stage_order: number;
-  label: string;
-}
-
-interface StageConfig {
-  type: string;
-  config: Record<string, any>;
-}
-
-// 响应式数据
-const stageConfig = ref<Record<string, StageConfig>>({});
+const stageConfig = ref<Record<string, any>>({});
 const selectedStageType = ref<string>('build');
 const selectedKeys = ref<string[]>([]);
-const currentNode = ref<StageNode | null>(null);
+const currentNode = ref<Pipeline_stages | null>(null);
 const currentStageConfig = ref<Record<string, any>>({});
-const menuData = ref<StageNode[]>([
+const menuData = ref<Pipeline_stages[]>([
   {
+    group_name: '构建',
     stage_order: 0,
-    label: '构建'
+    stage_name: '构建',
+    pipeline_jobs: { parameters: '', status: '' }
   }
 ]);
 
@@ -104,7 +94,6 @@ const props = defineProps({
   stageId: Number
 });
 const visible = ref<boolean>(props.visible);
-const defaultProps = { label: 'label' };
 
 
 const emits = defineEmits<{
@@ -131,7 +120,7 @@ const currentStageComponent = computed(() => {
 // 方法 - 更新配置
 const handleStageConfigUpdate = (config: Record<string, any>): void => {
   if (currentNode.value) {
-    const stageOrder = currentNode.value.stage_order.toString();
+    const stageOrder = currentNode.value.stage_order?.toString() || '';
     stageConfig.value[stageOrder] = {
       type: selectedStageType.value,
       config
@@ -142,13 +131,13 @@ const handleStageConfigUpdate = (config: Record<string, any>): void => {
 // 方法 - 确认
 const handleConfirm = (): void => {
   const stages = menuData.value.map(node => {
-    const stageOrder = node.stage_order.toString();
+    const stageOrder = node.stage_order?.toString() || '';
     const stageInfo = stageConfig.value[stageOrder] || { type: '', config: {} };
     return {
-      name: node.label,
+      name: node.stage_name || '',
       type: stageInfo.type,
       config: stageInfo.config,
-      stage_order: node.stage_order
+      stage_order: node.stage_order || 0
     };
   });
   
@@ -165,14 +154,14 @@ const handleCancel = (): void => {
 
 // 方法 - 节点点击
 const handleNodeClick = (data: any, node: any, e: MouseEvent): void => {
-  const stageNode = data as StageNode;
-  selectedKeys.value = [stageNode.stage_order.toString()];
+  const stageNode = data as Pipeline_stages;
+  selectedKeys.value = [stageNode.stage_order?.toString() || ''];
   currentNode.value = stageNode;
   
-  const stageType = StageType.find(type => type.name === stageNode.label)?.value || '';
+  const stageType = StageType.find(type => type.name === stageNode.stage_name)?.value || '';
   if (stageType) {
     selectedStageType.value = stageType;
-    const stageOrder = stageNode.stage_order.toString();
+    const stageOrder = stageNode.stage_order?.toString() || '';
     // 使用nextTick确保DOM更新后再加载配置
     nextTick(() => {
       currentStageConfig.value = { ...(stageConfig.value[stageOrder]?.config || {}) };
@@ -181,7 +170,7 @@ const handleNodeClick = (data: any, node: any, e: MouseEvent): void => {
 };
 
 // 方法 - 上移节点
-const moveUp = (node: StageNode): void => {
+const moveUp = (node: Pipeline_stages): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index > 0) {
     [menuData.value[index], menuData.value[index - 1]] = [menuData.value[index - 1], menuData.value[index]];
@@ -191,7 +180,7 @@ const moveUp = (node: StageNode): void => {
 };
 
 // 方法 - 下移节点
-const moveDown = (node: StageNode): void => {
+const moveDown = (node: Pipeline_stages): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index !== -1 && index < menuData.value.length - 1) {
     [menuData.value[index], menuData.value[index + 1]] = [menuData.value[index + 1], menuData.value[index]];
@@ -201,12 +190,14 @@ const moveDown = (node: StageNode): void => {
 };
 
 // 方法 - 添加节点
-const addNode = (node: StageNode): void => {
+const addNode = (node: Pipeline_stages): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index !== -1) {
     menuData.value.splice(index + 1, 0, {
+      group_name: '新建分组',
       stage_order: menuData.value.length,
-      label: '构建'
+      stage_name: '新建阶段',
+      pipeline_jobs: { parameters: '', status: '' }
     });
     
     updateStageOrders();
@@ -214,10 +205,10 @@ const addNode = (node: StageNode): void => {
     
     const newNode = menuData.value[index + 1];
     currentNode.value = newNode;
-    selectedKeys.value = [newNode.stage_order.toString()];
+    selectedKeys.value = [newNode.stage_order?.toString() || ''];
     selectedStageType.value = 'build';
     
-    const newStageOrder = newNode.stage_order.toString();
+    const newStageOrder = newNode.stage_order?.toString() || '';
     stageConfig.value[newStageOrder] = {
       type: 'build',
       config: {}
@@ -228,7 +219,7 @@ const addNode = (node: StageNode): void => {
 };
 
 // 方法 - 删除节点
-const deleteNode = (node: StageNode): void => {
+const deleteNode = (node: Pipeline_stages): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index !== -1) {
     ElMessageBox.confirm(
@@ -244,8 +235,10 @@ const deleteNode = (node: StageNode): void => {
       
       if (menuData.value.length === 0) {
         menuData.value = [{
+          group_name: '默认分组',
           stage_order: 0,
-          label: '默认节点'
+          stage_name: '默认阶段',
+          pipeline_jobs: { parameters: '', status: '' }
         }];
       } else {
         updateStageOrders();
@@ -258,7 +251,7 @@ const deleteNode = (node: StageNode): void => {
       
       if (menuData.value.length > 0) {
         currentNode.value = menuData.value[0];
-        selectedKeys.value = [menuData.value[0].stage_order.toString()];
+        selectedKeys.value = [menuData.value[0].stage_order?.toString() || ''];
       }
       
       menuData.value = [...menuData.value];
@@ -273,10 +266,10 @@ const updateStageOrders = (): void => {
   // 保存当前的配置
   const oldStageConfig = { ...stageConfig.value };
   // 创建新的配置对象
-  const newStageConfig: Record<string, StageConfig> = {};
+  const newStageConfig: Record<string, any> = {};
   
   menuData.value.forEach((node, index) => {
-    const oldStageOrder = node.stage_order.toString();
+    const oldStageOrder = node.stage_order?.toString() || '';
     // 更新节点的 stage_order 为其在数组中的索引
     node.stage_order = index;
     const newStageOrder = index.toString();
@@ -295,8 +288,8 @@ const updateStageOrders = (): void => {
 onMounted(() => {
   if (menuData.value.length > 0) {
     currentNode.value = menuData.value[0];
-    selectedKeys.value = [menuData.value[0].stage_order.toString()];
-    const stageOrder = menuData.value[0].stage_order.toString();
+    selectedKeys.value = [menuData.value[0].stage_order?.toString() || ''];
+    const stageOrder = menuData.value[0].stage_order?.toString() || '';
     currentStageConfig.value = stageConfig.value[stageOrder]?.config || {};
   }
 });
@@ -313,9 +306,12 @@ watch(visible, (val) => {
 // 监听 - 阶段类型变化
 watch(selectedStageType, (newVal) => {
   if (newVal && currentNode.value) {
-    const stageTypeName = StageType.find(type => type.value === newVal)?.name || '';
-    currentNode.value.label = stageTypeName;
-    menuData.value = [...menuData.value];
+    const stageTypeItem = StageType.find(type => type.value === newVal);
+    if (stageTypeItem) {
+      currentNode.value.stage_name = stageTypeItem.name;
+      // 确保menuData触发更新
+      menuData.value = [...menuData.value];
+    }
   }
 });
 </script>
