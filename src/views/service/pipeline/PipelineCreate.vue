@@ -1,10 +1,10 @@
 <template>
-  <div class="create-pipeline-container">
+  <div class="pipeline-root-container">
+    <div class="create-pipeline-container">
       <el-form ref="pipelineForm" :model="formData" :rules="formRules" label-width="120px">
         <el-form-item label="流水线名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入流水线名称" maxLength="50"></el-input>
         </el-form-item>
-            <!-- 添加一个容器包裹所有按钮和template，并设置flex布局 -->
             <div class="button-container">
               <el-button :icon="Plus" circle @click="handleAddAction(0) "/>
               <template v-for="(action, index) in groupList" :key="action.group_id">
@@ -15,8 +15,7 @@
                   }"
                 >
                   {{ action.group_name }}
-                  <el-button :icon="EditPen" @click="handleEditName(action.group_id)"/>
-                  <el-button :icon="Operation" @click="handleEditAction(index)"/>
+                  <el-button :icon="Operation" @click="handleEditAction(action.group_id)"/>
                 </div>
                 <el-button :icon="Plus" circle @click="handleAddAction(index + 1)" />
               </template>
@@ -29,27 +28,8 @@
             :group-id="currentEditGroupId"
             @update:visible="(value: boolean) => showEditActionDialog = value"
             @confirm="confirmEditAction"
-            @cancel="handleDialogCancel"
+            @cancel="() => showEditActionDialog = false" 
           ></EditStage>
-          <!-- 重命名弹窗 --> 
-          <el-dialog
-            v-model="showRenameDialog"
-            title="编辑分组名称"
-            width="30%"
-            :before-close="cancelRename"
-          >
-            <el-form :model="{ name: editActionName }" label-width="80px">
-              <el-form-item label="分组名称" prop="name" :rules="[{ required: true, message: '请输入分组名称', trigger: 'blur' }]">
-                <el-input v-model="editActionName" placeholder="请输入新的分组名称"></el-input>
-              </el-form-item>
-            </el-form>
-            <template #footer>
-              <span class="dialog-footer">
-                <el-button @click="cancelRename">取消</el-button>
-                <el-button type="primary" @click="confirmRename">确认</el-button>
-              </span>
-            </template>
-          </el-dialog>
         <div class="form-actions">
           <el-button @click="handleCancel">取消</el-button>
           <el-button type="primary" @click="handleSubmit">提交</el-button>
@@ -60,26 +40,52 @@
         <PipelineRun  
         :pipeline-stages="pipelineActionsDefault"/>
       </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, defineEmits, defineProps, toRefs,computed,watch } from 'vue';
+import { ref, reactive, defineEmits, defineProps, toRefs,computed } from 'vue';
 import axios from 'axios';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
-import { Plus, EditPen, Operation } from '@element-plus/icons-vue';
+import { Plus, Operation } from '@element-plus/icons-vue';
 import EditStage from './stages/EditStage.vue';
 import PipelineRun from './PipelineRun.vue';
-import { Pipeline, Pipeline_stages, Pipeline_job } from '@/types/pipeline';
-import { StageType } from '@/types/pipeline-stagetype';
+import { Pipeline, Pipeline_stages } from '@/types/pipeline';
 
 const emit = defineEmits(['cancel', 'success']);
 
-const state = reactive({
-  resultStagesData: null as Pipeline_stages[] | null,
-  resultJobsData: null as Pipeline_job | null,
-})
+const currentInsertIndex = ref(0);
+const showEditActionDialog = ref(false);
+const editActionName = ref('');
+const editActionDialogTitle = ref('编辑');
+const currentEditGroupId = ref<string>('');
+const pipelineForm = ref<FormInstance>();
 
-const { resultStagesData, resultJobsData } = toRefs(state)
+const props = defineProps<{
+  componentId: string;
+  serviceTree: string;
+}>();
+
+// 表单数据
+const formData = reactive<{
+  name: string;
+  description: string;
+  type: string;
+}>({
+  name: '',
+  description: '',
+  type: ''
+});
+
+const formRules = reactive<FormRules>({
+  name: [
+    { required: true, message: '请输入流水线名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '名称长度应在2-50个字符之间', trigger: 'blur' }
+  ],
+  type: [
+    { required: true, message: '请选择流水线类型', trigger: 'change' }
+  ]
+});
 
 // 添加生成临时ID的函数，用于视图渲染，最后不提交，数据库自动生成新的id
 const generateTempId = () => {
@@ -100,47 +106,27 @@ const pipelineActionsDefault = ref<Pipeline_stages[]>([
   }
 ]);
 
-const currentInsertIndex = ref(0);
-const showEditActionDialog = ref(false);
-const newActionName = ref('');
-const editActionName = ref('');
-const editActionDialogTitle = ref('编辑');
-const currentEditGroupId = ref<string>('');
-const showRenameDialog = ref(false);
-
-const props = defineProps<{
-  componentId: string;
-  serviceTree: string;
-}>();
-
 // 对pipelineActionsDefault进行处理，将group_name相同的阶段合并，生成groupList
 // 保留group_order、group_name、group_id，剔除默认新增节点、阶段
+// 优化groupList计算逻辑，使用对象而非Map提升性能
 const groupList = computed(() => {
-  // 创建一个Map来存储每个group_name对应的唯一组
-  const groupMap = new Map();
-  
-  // 遍历pipelineActionsDefault中的所有阶段
+  const groupMap: Record<string, { group_name: string; group_order: number; group_id: string }> = {};
+
   pipelineActionsDefault.value.forEach(action => {
     const { group_name, group_order, group_id } = action;
-    
-    // 如果group_name不存在于Map中，则添加它
-    if (!groupMap.has(group_name)) {
-      groupMap.set(group_name, {
-        group_name,
-        group_order,
-        group_id
-      });
+
+    if (!groupMap[group_name]) {
+      groupMap[group_name] = { group_name, group_order: group_order!, group_id: group_id! };
+
     }
   });
-  
-  // 将Map转换为数组并按group_order排序后返回
-  return Array.from(groupMap.values()).sort((a, b) => a.group_order - b.group_order);
+
+  return Object.values(groupMap).sort((a, b) => a.group_order - b.group_order);
 });
 
 // 添加新操作的处理函数
 const handleAddAction = (index: number) => {
   currentInsertIndex.value = index;
-  
   // 直接创建新的空action
   const newStage: Pipeline_stages = {
     group_id: generateTempId(),
@@ -166,50 +152,48 @@ const handleAddAction = (index: number) => {
 };
 
 // 添加新编辑的处理函数
-const handleEditAction = (index: number) => {
-  currentInsertIndex.value = index;
-  showEditActionDialog.value = true;
-  editActionName.value = groupList.value[index].group_name;
+const handleEditAction = (group_id: string) => {
+  // 找到具有指定group_id的第一个action
   const targetAction = pipelineActionsDefault.value.find(
-    item => item.group_id === groupList.value[index].group_id
+    item => item.group_id === group_id
   );
-  // 确保group_id存在
+  
   if (targetAction) {
-    currentEditGroupId.value = targetAction.group_id || generateTempId();
+    currentInsertIndex.value = pipelineActionsDefault.value.findIndex(
+      item => item.group_id === group_id
+    );
+    editActionName.value = targetAction.group_name;
+    currentEditGroupId.value = targetAction.group_id!; 
+    showEditActionDialog.value = true;
   } else {
-    // 如果找不到，生成新的临时ID
-    currentEditGroupId.value = generateTempId();
+    ElMessage.error('未找到对应的操作');
   }
 };
 
-const confirmEditAction = (stages: any[]) => {
-  // 找到当前编辑的group_index
+const confirmEditAction = (data: { stages: Array<{ name: string; type: string; config: any; stage_order: number }>, group_name: string }) => {
+  const { stages, group_name } = data;
   const groupIndex = pipelineActionsDefault.value.findIndex(
     item => item.group_id === currentEditGroupId.value
   );
 
   if (groupIndex !== -1) {
-    // 创建一个新数组来存储更新后的数据
-    const updatedActions = [...pipelineActionsDefault.value];
+    // 创建新数组时直接过滤并添加，减少中间变量
+    const newActions = [
+      ...pipelineActionsDefault.value.filter(item => item.group_id !== currentEditGroupId.value)
+    ];
 
-    // 更新所有相同group_id的项的group_name
-    updatedActions.forEach(item => {
-      if (item.group_id === currentEditGroupId.value) {
-        item.group_name = editActionName.value;
-      }
-    });
-
-    // 清空现有阶段
-    const filteredActions = updatedActions.filter(
-      item => item.group_id !== currentEditGroupId.value
-    );
+    // 更新相同group_id的项的group_name（如果有的话）
+    pipelineActionsDefault.value
+      .filter(item => item.group_id === currentEditGroupId.value)
+      .forEach(item => {
+        item.group_name = group_name;
+      });
 
     // 添加新阶段
-    const newActions = [...filteredActions];
     stages.forEach((stage, index) => {
       newActions.splice(groupIndex + index, 0, {
         group_id: currentEditGroupId.value,
-        group_name: editActionName.value,
+        group_name: group_name,
         group_order: currentInsertIndex.value,
         stage_name: stage.name,
         stage_order: index + 1,
@@ -220,7 +204,6 @@ const confirmEditAction = (stages: any[]) => {
       });
     });
 
-    // 替换整个数组以确保响应式更新
     pipelineActionsDefault.value = newActions;
   }
 
@@ -228,84 +211,15 @@ const confirmEditAction = (stages: any[]) => {
   ElMessage.success('操作编辑成功');
 };
 
-const handleEditName = (groupId: string) => {
-  const targetAction = pipelineActionsDefault.value.find(
-    item => item.group_id === groupId
-  );
-  if (targetAction) {
-    editActionName.value = targetAction.group_name;
-    currentEditGroupId.value = groupId; // 设置当前编辑的group_id
-    showRenameDialog.value = true;
-  }
-};
-
-// 处理重命名确认
-const confirmRename = () => {
-  if (!editActionName.value.trim()) {
-    ElMessage.error('分组名称不能为空');
-    return;
-  }
-  // 更新所有相同group_id的项的group_name
-  const updatedActions = [...pipelineActionsDefault.value];
-  updatedActions.forEach(item => {
-    if (item.group_id === currentEditGroupId.value) {
-      item.group_name = editActionName.value;
-    }
-  });
-
-  // 替换原数组以触发响应式更新
-  pipelineActionsDefault.value = updatedActions;
-
-  showRenameDialog.value = false;
-  ElMessage.success('分组名称修改成功');
-};
-
-// 处理重命名取消
-const cancelRename = () => {
-  showRenameDialog.value = false;
-};
-
-// 表单引用
-const pipelineForm = ref<FormInstance>();
-
-// 表单数据
-const formData = reactive<{
-  name: string;
-  description: string;
-  type: string;
-}>({
-  name: '',
-  description: '',
-  type: ''
-});
-
-const formRules = reactive<FormRules>({
-  name: [
-    { required: true, message: '请输入流水线名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '名称长度应在2-50个字符之间', trigger: 'blur' }
-  ],
-  type: [
-    { required: true, message: '请选择流水线类型', trigger: 'change' }
-  ]
-});
-
-const handleCancel = () => {
-  emit('cancel');
-};
-
-const handleDialogCancel = () => {
-  showEditActionDialog.value = false;
-};
-
 const handleSubmit = async () => {
   if (!pipelineForm.value) return;
 
-    const resultTableData: Omit<Pipeline, 'id'> = {
-      name: formData.name,
-      component_id: props.componentId,
-      service_tree: props.serviceTree, 
-      pipeline_stages: resultStagesData.value as Pipeline_stages[]
-    };
+  const resultTableData: Omit<Pipeline, 'id'> = {
+    name: formData.name,
+    component_id: props.componentId,
+    service_tree: props.serviceTree,
+    pipeline_stages: pipelineActionsDefault.value
+  };
 
   try {
     const valid = await pipelineForm.value.validate();
@@ -321,6 +235,10 @@ const handleSubmit = async () => {
     console.log('表单验证失败:', error);
     ElMessage.error('流水线创建失败，请检查表单数据');
   }
+};
+
+const handleCancel = () => {
+  emit('cancel');
 };
 
 </script>
@@ -347,16 +265,15 @@ const handleSubmit = async () => {
   height: 40px;
   width: 220px;
   border: 1px solid var(--el-border-color);
-  border-radius: 0;
+  border-radius: var(--el-border-radius-round); /* 使用变量代替0 */
   text-align: center;
   line-height: 40px;
 }
 
 .button-container {
-  display: flex;       /* 设置为flex布局 */
-  align-items: center; /* 垂直居中对齐 */
-  gap: 8px;            /* 元素之间的间距 */
-  flex-wrap: wrap;     /* 可选：当空间不足时换行 */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-
 </style>

@@ -4,6 +4,13 @@
     :title="title"
     width="70%"
   >
+    <!-- 在现有表单中添加group_name字段 -->
+    <el-form :model="formData" :rules="rules" ref="formRef" label-width="120px">
+      <el-form-item label="分组名称" prop="group_name">
+        <el-input v-model="formData.group_name" placeholder="请输入分组名称" />
+      </el-form-item>
+    </el-form>
+
     <el-row :gutter="20">
       <!-- 左侧菜单 - 占30%宽度 -->
       <el-col :span="7">
@@ -66,41 +73,39 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch, computed, onMounted, nextTick } from 'vue';
-import { ElMessageBox } from 'element-plus';
+import { ElMessageBox, ElForm } from 'element-plus';
 import BuildStage from './BuildStage.vue';
 import CheckPointStage from './CheckPointStage.vue';
 import TestStage from './TestStage.vue';
 import { StageType } from '@/types/pipeline-stagetype';
-import { Pipeline_stages, Pipeline_job } from '@/types/pipeline';
+import { Pipeline_stages } from '@/types/pipeline';
 
-const stageConfig = ref<Record<string, any>>({});
+interface StageConfig {
+  type: string;
+  config: Record<string, any>;
+}
+
+interface ConfirmData {
+  stages: Array<{
+    name: string;
+    type: string;
+    config: any;
+    stage_order: number;
+  }>;
+  group_name: string;
+}
+
+const stageConfig = ref<Record<string, StageConfig>>({});
 const selectedStageType = ref<string>('new_group');
 const selectedKeys = ref<string[]>([]);
 const currentNode = ref<Pipeline_stages | null>(null);
 const currentStageConfig = ref<Record<string, any>>({});
 const menuData = ref<Pipeline_stages[]>([]);
-// 初始化menuData的函数
-const initMenuData = () => {
-  // 使用传递的actionName或默认值
-  const groupName = props.actionName || '构建';
-  menuData.value = [
-    {
-      group_name: groupName,
-      stage_order: 0,
-      stage_name: groupName,
-      pipeline_jobs: { parameters: '', status: '' }
-    }
-  ];
-
-  // 设置selectedStageType
-  const defaultStage = menuData.value[0];
-  if (defaultStage) {
-    const stageType = StageType.find(type => type.value === defaultStage.stage_name)?.name || '';
-    if (stageType) {
-      selectedStageType.value = stageType;
-    }
-  }
-};
+const formRef = ref<InstanceType<typeof ElForm> | null>(null);
+const formData = ref<{ group_name: string }>({ group_name: '' });
+const rules = ref<Record<string, any>>({
+  group_name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }]
+});
 
 // Props和Emits
 const props = defineProps({
@@ -112,12 +117,37 @@ const props = defineProps({
 });
 const visible = ref<boolean>(props.visible);
 
+const initMenuData = () => {
+  const groupName = props.actionName || '构建';
+  formData.value.group_name = groupName; // 初始化表单数据
+  menuData.value = [{
+    group_name: groupName,
+    stage_order: 0,
+    stage_name: groupName,
+    pipeline_jobs: { parameters: '', status: '' }
+  }];
+
+
+  const defaultStage = menuData.value[0];
+  if (defaultStage) {
+    const stageType = StageType.find(type => type.value === defaultStage.stage_name)?.name || '';
+    if (stageType) {
+      selectedStageType.value = stageType;
+    }
+    // 自动选择第一个节点
+    currentNode.value = defaultStage;
+    selectedKeys.value = [defaultStage.stage_order?.toString() || ''];
+    const stageOrder = defaultStage.stage_order?.toString() || '';
+    currentStageConfig.value = stageConfig.value[stageOrder]?.config || {};
+  }
+};
+
+
 const emits = defineEmits<{
   (e: 'update:visible', value: boolean): void;
-  (e: 'confirm', stages: Array<{ name: string; type: string; config: any; stage_order: number }>): void;
+  (e: 'confirm', data: ConfirmData): void;
   (e: 'cancel'): void;
 }>();
-
 
 // 计算属性 - 动态切换组件
 const currentStageComponent = computed(() => {
@@ -145,21 +175,39 @@ const handleStageConfigUpdate = (config: Record<string, any>): void => {
 };
 
 // 方法 - 确认
-const handleConfirm = (): void => {
-  const stages = menuData.value.map(node => {
-    const stageOrder = node.stage_order?.toString() || '';
-    const stageInfo = stageConfig.value[stageOrder] || { type: '', config: {} };
-    return {
-      name: node.stage_name || '',
-      type: stageInfo.type,
-      config: stageInfo.config,
-      stage_order: node.stage_order || 0
-    };
-  });
-  
-  emits('confirm', stages);
-  emits('update:visible', false);
-  visible.value = false;
+const handleConfirm = async (): Promise<void> => {
+  if (!formRef.value) return;
+
+  try {
+    await formRef.value.validate();
+    
+    // 同步formData.group_name到menuData
+    menuData.value.forEach(node => {
+      node.group_name = formData.value.group_name;
+    });
+
+    const stages = menuData.value.map(node => {
+      const stageOrder = node.stage_order?.toString() || '';
+      const stageInfo = stageConfig.value[stageOrder] || { type: '', config: {} };
+      return {
+        name: node.stage_name || '',
+        type: stageInfo.type,
+        config: stageInfo.config,
+        stage_order: node.stage_order || 0
+      };
+    });
+
+    // 传递包含stages和group_name的对象
+    emits('confirm', {
+      stages,
+      group_name: formData.value.group_name
+    });
+    emits('update:visible', false);
+    visible.value = false;
+  } catch (error) {
+    // 表单验证失败，不执行后续操作
+    console.log('表单验证失败:', error);
+  }
 };
 
 // 方法 - 取消
@@ -282,7 +330,7 @@ const updateStageOrders = (): void => {
   // 保存当前的配置
   const oldStageConfig = { ...stageConfig.value };
   // 创建新的配置对象
-  const newStageConfig: Record<string, any> = {};
+  const newStageConfig: Record<string, StageConfig> = {};
   
   menuData.value.forEach((node, index) => {
     const oldStageOrder = node.stage_order?.toString() || '';
@@ -296,19 +344,13 @@ const updateStageOrders = (): void => {
     }
   });
   
-  // 更新配置
+  // 替换整个对象以确保响应式更新
   stageConfig.value = newStageConfig;
 };
 
 // 生命周期 - 挂载
 onMounted(() => {
   initMenuData();
-  if (menuData.value.length > 0) {
-    currentNode.value = menuData.value[0];
-    selectedKeys.value = [menuData.value[0].stage_order?.toString() || ''];
-    const stageOrder = menuData.value[0].stage_order?.toString() || '';
-    currentStageConfig.value = stageConfig.value[stageOrder]?.config || {};
-  }
 });
 
 // 监听actionName变化，重新初始化menuData
@@ -318,13 +360,18 @@ watch(
     if (newActionName) {
       initMenuData();
     }
-  }
+  },
+  { immediate: true }
 );
 
 // 监听 - visible状态同步
-watch(() => props.visible, (val) => {
-  visible.value = val;
-});
+watch(
+  () => props.visible,
+  (val) => {
+    visible.value = val;
+  },
+  { immediate: true }
+);
 
 watch(visible, (val) => {
   emits('update:visible', val);
@@ -336,7 +383,6 @@ watch(selectedStageType, (newVal) => {
     const stageTypeItem = StageType.find(type => type.name === newVal);
     if (stageTypeItem) {
       currentNode.value.stage_name = stageTypeItem.value;
-      // 确保menuData触发更新
       menuData.value = [...menuData.value];
     }
   }
