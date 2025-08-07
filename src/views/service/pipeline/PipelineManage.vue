@@ -28,7 +28,11 @@
               <el-table-column type="index" label="序号" width="80"></el-table-column>
               <el-table-column prop="name" label="流水线名称" width="180"></el-table-column>
               <el-table-column prop="component_id" label="所属组件" width="180"></el-table-column>
-              <el-table-column prop="service_tree" label="所属服务"></el-table-column>
+              <el-table-column prop="service_tree" label="所属服务">
+                <template #default="scope">
+                  {{ scope.row.service_tree.replace(/\./g, '/') }}
+                </template>
+              </el-table-column>
               <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
               <el-table-column label="操作" width="250">
                 <template #default="scope">
@@ -63,6 +67,7 @@
         :component-id="componentId || ''"
         :service-tree="serviceTree || ''"
         @cancel="isCreateMode = false"
+        @success="handlePipelineCreated" 
       />
     </el-drawer>
   </el-card>
@@ -116,7 +121,6 @@ const selectedPipeline = computed(() => {
 });
 
 const handleApiError = (error: any, defaultData: any[], message: string) => {
-  console.error(message, error);
   ElMessage.warning(`${message}，已加载默认数据`);
   error.value = message;
   return defaultData;
@@ -139,6 +143,14 @@ const handleEdit = (pipeline: Pipeline) => {
 const handleRun = (pipeline: Pipeline) => {
   console.log('运行流水线:', pipeline);
   // router.push(`/pipeline/run/${pipeline.id}`);
+};
+
+const handlePipelineCreated = async () => {
+  isCreateMode.value = false;
+  ElMessage.success('流水线创建成功');
+  if (componentId.value) {
+    pipelineList.value = await fetchPipelines(componentId.value);
+  }
 };
 
 const fetchPipelines = async (componentId: string) => {

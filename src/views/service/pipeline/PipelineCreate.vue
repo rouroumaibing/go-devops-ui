@@ -224,7 +224,6 @@ const handleSubmit = async () => {
   try {
     const valid = await pipelineForm.value.validate();
     if (valid) {
-
       // 发送创建流水线的POST请求
       const response = await axios.post('/api/pipeline', resultTableData);
       ElMessage.success('流水线创建成功');
@@ -232,7 +231,6 @@ const handleSubmit = async () => {
       emit('cancel');
     }
   } catch (error) {
-    console.log('表单验证失败:', error);
     ElMessage.error('流水线创建失败，请检查表单数据');
   }
 };
