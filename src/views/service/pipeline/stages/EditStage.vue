@@ -4,10 +4,22 @@
     :title="title"
     width="70%"
   >
-    <!-- 在现有表单中添加group_name字段 -->
     <el-form :model="formData" :rules="rules" ref="formRef" label-width="120px">
-      <el-form-item label="分组名称" prop="group_name">
-        <el-input v-model="formData.group_name" placeholder="请输入分组名称" />
+      <el-form-item label="阶段名称" prop="group_name">
+        <el-input v-model="formData.group_name" placeholder="请输入阶段名称" />
+      </el-form-item>
+      <el-form-item label="阶段类型" prop="stage_type">
+        <el-select 
+          v-model="selectedStageType"
+          placeholder="请选择阶段类型"
+        >
+          <el-option 
+            v-for="type in StageType"
+            :key="type.name"
+            :label="type.value"
+            :value="type.name"
+          ></el-option>
+        </el-select>
       </el-form-item>
     </el-form>
 
@@ -17,7 +29,7 @@
         <el-tree-v2
           style="height: 400px; border: 2px solid #eee"
           :data="menuData"
-          @node-click="handleNodeClick"
+          @node-click="handleJobClick"
           v-model:selectedKeys="selectedKeys"
           node-key="stage_order"
         >
@@ -29,8 +41,8 @@
               </div>
               <span>{{ data.stage_name }}</span>
               <div class="right-icons">
-                <el-icon @click.stop="addNode(data)" size="16"><Plus /></el-icon>
-                <el-icon @click.stop="deleteNode(data)" size="16"><Minus /></el-icon>
+                <el-icon @click.stop="addJob(data)" size="16"><Plus /></el-icon>
+                <el-icon @click.stop="deleteJob(data)" size="16"><Minus /></el-icon>
               </div>
             </div>
           </template>
@@ -39,18 +51,16 @@
       
       <!-- 右侧内容 - 占70%宽度 -->
       <el-col :span="17">
-        
-        <!-- 添加阶段类型选择器 -->
         <el-select 
-          v-model="selectedStageType"
+          v-model="selectedJobType"
           placeholder="请选择阶段类型"
           style="margin-top: 15px;"
         >
           <el-option 
-            v-for="type in StageType"
-            :key="type.name"
-            :label="type.value"
-            :value="type.name"
+            v-for="job in StageType.find(type => type.name === selectedStageType)?.job"
+            :key="job.name"
+            :label="job.value"
+            :value="job.name"
           ></el-option>
         </el-select>
         
@@ -96,15 +106,17 @@ interface ConfirmData {
 }
 
 const stageConfig = ref<Record<string, StageConfig>>({});
-const selectedStageType = ref<string>('new_group');
+const selectedStageType = ref<string>('');
+const selectedJobType = ref<string>('');
 const selectedKeys = ref<string[]>([]);
-const currentNode = ref<Pipeline_stages | null>(null);
+const currentJob = ref<Pipeline_stages | null>(null);
 const currentStageConfig = ref<Record<string, any>>({});
 const menuData = ref<Pipeline_stages[]>([]);
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
-const formData = ref<{ group_name: string }>({ group_name: '' });
+const formData = ref<{ group_name: string; stage_name: string }>({ group_name: '', stage_name: '' });
 const rules = ref<Record<string, any>>({
-  group_name: [{ required: true, message: '请输入分组名称', trigger: 'blur' }]
+  group_name: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }],
+  stage_type: [{ required: false, message: '请选择阶段类型', trigger: 'blur' }]
 });
 
 // Props和Emits
@@ -112,30 +124,37 @@ const props = defineProps({
   visible: Boolean,
   title: { type: String, default: '编辑阶段' },
   stageId: Number,
-  actionName: String, 
+  groupName: String, 
+  stageType: String,
+  stageName: String,
   groupId: String
 });
 const visible = ref<boolean>(props.visible);
 
 const initMenuData = () => {
-  const groupName = props.actionName || '构建';
-  formData.value.group_name = groupName; // 初始化表单数据
+  const groupName = props.groupName || '新建阶段';
+  const stageType = props.stageType || '';
+  const stageName = props.stageName || '新建任务';
+
+  formData.value.group_name = groupName;
+  formData.value.stage_name = stageName;
+
   menuData.value = [{
     group_name: groupName,
     stage_order: 0,
-    stage_name: groupName,
+    stage_type: stageType,
+    stage_name: stageName,
     pipeline_jobs: { parameters: '', status: '' }
   }];
 
-
   const defaultStage = menuData.value[0];
   if (defaultStage) {
-    const stageType = StageType.find(type => type.value === defaultStage.stage_name)?.name || '';
+    const stageType = StageType.find(type => type.value === defaultStage.stage_type)?.name || '';
     if (stageType) {
       selectedStageType.value = stageType;
     }
     // 自动选择第一个节点
-    currentNode.value = defaultStage;
+    currentJob.value = defaultStage;
     selectedKeys.value = [defaultStage.stage_order?.toString() || ''];
     const stageOrder = defaultStage.stage_order?.toString() || '';
     currentStageConfig.value = stageConfig.value[stageOrder]?.config || {};
@@ -165,10 +184,10 @@ const currentStageComponent = computed(() => {
 
 // 方法 - 更新配置
 const handleStageConfigUpdate = (config: Record<string, any>): void => {
-  if (currentNode.value) {
-    const stageOrder = currentNode.value.stage_order?.toString() || '';
+  if (currentJob.value) {
+    const stageOrder = currentJob.value.stage_order?.toString() || '';
     stageConfig.value[stageOrder] = {
-      type: selectedStageType.value,
+      type: currentJob.value.stage_type || '',
       config
     };
   }
@@ -216,24 +235,25 @@ const handleCancel = (): void => {
   visible.value = false;
 };
 
-// 方法 - 节点点击
-const handleNodeClick = (data: any, node: any, e: MouseEvent): void => {
-  const stageNode = data as Pipeline_stages;
-  selectedKeys.value = [stageNode.stage_order?.toString() || ''];
-  currentNode.value = stageNode;
-  
-  const stageType = StageType.find(type => type.value === stageNode.stage_name)?.name || '';
-  if (stageType) {
-    selectedStageType.value = stageType;
-    const stageOrder = stageNode.stage_order?.toString() || '';
-    // 使用nextTick确保DOM更新后再加载配置
-    nextTick(() => {
-      currentStageConfig.value = { ...(stageConfig.value[stageOrder]?.config || {}) };
-    });
-  }
+// 方法 - 点击任务
+const handleJobClick = (data: any, node: any, e: MouseEvent): void => {
+  const stageJob = data as Pipeline_stages;
+  selectedKeys.value = [stageJob.stage_order?.toString() || ''];
+  currentJob.value = stageJob;
+ 
+  selectedKeys.value = [stageJob.stage_order?.toString() || ''];
+  selectedStageType.value = StageType.find(type => type.value === stageJob.stage_type)?.name || '';
+  selectedJobType.value = StageType
+    .flatMap(type => type.job || [])
+    .find(job => job.value === stageJob.stage_name)
+    ?.name || '';
+
+  nextTick(() => {
+    currentStageConfig.value = { ...(stageConfig.value[currentJob.value?.stage_order?.toString() ?? '']?.config || {}) };
+  });
 };
 
-// 方法 - 上移节点
+// 方法 - 上移任务
 const moveUp = (node: Pipeline_stages): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index > 0) {
@@ -253,28 +273,35 @@ const moveDown = (node: Pipeline_stages): void => {
   }
 };
 
-// 方法 - 添加节点
-const addNode = (node: Pipeline_stages): void => {
-  const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
+// 方法 - 添加任务
+const addJob = (job: Pipeline_stages): void => {
+  
+  const index = menuData.value.findIndex(item => item.stage_order === job.stage_order);
+
   if (index !== -1) {
     menuData.value.splice(index + 1, 0, {
-      group_name: '新建分组',
+      group_name: formData.value.group_name,
+      stage_type: StageType.find(type => type.name === selectedStageType.value)?.value || '',
+      stage_name: StageType.find(type => type.name === selectedStageType.value)?.job[0]?.value || '',
       stage_order: menuData.value.length,
-      stage_name: '新建阶段',
       pipeline_jobs: { parameters: '', status: '' }
     });
-    
+
     updateStageOrders();
     menuData.value = [...menuData.value];
     
     const newNode = menuData.value[index + 1];
-    currentNode.value = newNode;
+    currentJob.value = newNode;
     selectedKeys.value = [newNode.stage_order?.toString() || ''];
-    selectedStageType.value = 'new_group';
-    
+    selectedStageType.value = StageType.find(type => type.value === newNode.stage_type)?.name || '';
+    selectedJobType.value = StageType
+      .flatMap(type => type.job || [])
+      .find(job => job.value === newNode.stage_name)
+      ?.name || '';
+
     const newStageOrder = newNode.stage_order?.toString() || '';
     stageConfig.value[newStageOrder] = {
-      type: 'new_group',
+      type: newNode.stage_type || '',
       config: {}
     };
     
@@ -282,8 +309,8 @@ const addNode = (node: Pipeline_stages): void => {
   }
 };
 
-// 方法 - 删除节点
-const deleteNode = (node: Pipeline_stages): void => {
+// 方法 - 删除任务
+const deleteJob = (node: Pipeline_stages): void => {
   const index = menuData.value.findIndex(item => item.stage_order === node.stage_order);
   if (index !== -1) {
     ElMessageBox.confirm(
@@ -299,22 +326,22 @@ const deleteNode = (node: Pipeline_stages): void => {
       
       if (menuData.value.length === 0) {
         menuData.value = [{
-          group_name: '默认分组',
+          group_name: '新建阶段',
           stage_order: 0,
-          stage_name: '默认阶段',
+          stage_name: '新建任务',
           pipeline_jobs: { parameters: '', status: '' }
         }];
       } else {
         updateStageOrders();
       }
       
-      if (currentNode.value?.stage_order === node.stage_order) {
-        currentNode.value = null;
+      if (currentJob.value?.stage_order === node.stage_order) {
+        currentJob.value = null;
         selectedKeys.value = [];
       }
       
       if (menuData.value.length > 0) {
-        currentNode.value = menuData.value[0];
+        currentJob.value = menuData.value[0];
         selectedKeys.value = [menuData.value[0].stage_order?.toString() || ''];
       }
       
@@ -353,9 +380,9 @@ onMounted(() => {
   initMenuData();
 });
 
-// 监听actionName变化，重新初始化menuData
+// 监听groupName变化，重新初始化menuData
 watch(
-  () => props.actionName,
+  () => props.groupName,
   (newActionName) => {
     if (newActionName) {
       initMenuData();
@@ -377,12 +404,30 @@ watch(visible, (val) => {
   emits('update:visible', val);
 });
 
-// 监听 - 阶段类型变化
+// 监听 - 阶段类型变化，更新菜单数据
 watch(selectedStageType, (newVal) => {
-  if (newVal && currentNode.value) {
-    const stageTypeItem = StageType.find(type => type.name === newVal);
-    if (stageTypeItem) {
-      currentNode.value.stage_name = stageTypeItem.value;
+
+  if (newVal && currentJob.value) {
+    // 设置默认作业类型、默认作业名称
+    currentJob.value.stage_type = StageType.find(type => type.name === newVal)?.value;
+    currentJob.value.stage_name = StageType.find(type => type.name === newVal)?.job?.[0]?.value;
+    selectedJobType.value = StageType.find(type => type.name === newVal)?.job?.[0]?.name || '';
+
+    menuData.value = [...menuData.value];
+  }
+});
+
+// 监听 - 作业类型变化，更新菜单数据
+watch(selectedJobType, (newVal) => {
+  if (newVal && currentJob.value) {
+    // 找到对应的作业类型
+    const stageTypeItem = StageType.find(type => type.job?.some(job => job.name === newVal));
+     if (stageTypeItem) {
+      // 更新当前节点的阶段名称
+      currentJob.value.stage_name = stageTypeItem.job?.find(job => job.name === newVal)?.value 
+      // 配置也需要切换到新的配置
+      currentStageConfig.value = stageConfig.value?.[currentJob.value?.stage_order?.toString() || '']?.config || {};
+      // 触发菜单数据更新
       menuData.value = [...menuData.value];
     }
   }

@@ -13,6 +13,7 @@ export interface Pipeline_stages {
   group_id?: string;
   group_name: string;
   group_order?: number;
+  stage_type?: string;
   stage_name?: string;
   stage_order?: number;
   pipeline_id?: string;

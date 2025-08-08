@@ -77,7 +77,7 @@
 import axios from 'axios';
 import { ref, onMounted, watch, computed, reactive, toRefs } from 'vue';
 import { ElMessage, ElForm } from 'element-plus';
-import { useRouter, useRoute } from 'vue-router';
+import { useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
 import PipelineRun from './PipelineRun.vue';
@@ -195,7 +195,8 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
         "group_name": "构建",
         "group_order": 1,
-        "stage_name": "构建1",
+        "stage_type": "build",
+        "stage_name": "构建任务",
         "stage_order": 1,
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
@@ -214,7 +215,8 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
         "group_name": "构建",
         "group_order": 1,
-        "stage_name": "构建2",
+        "stage_type": "build",
+        "stage_name": "静态检查",
         "stage_order": 2,
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
@@ -229,30 +231,12 @@ const generateDefaultPipeline = (): Pipeline[] =>[
             "updated_at": "2025-07-15 10:30",
         }
       },{
-        "id": "000-0000-0002",
-        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
-        "group_name": "构建",
-        "group_order": 1,
-        "stage_name": "归档",
-        "stage_order": 3,
-        "pipeline_id": "0000-0000-0123",
-        "created_at": "2025-07-15 10:30",
-        "updated_at": "2025-07-15 10:30",
-        "pipeline_jobs" :{
-            "id": "000-0000-0000-1113",
-            "pipeline_id": "0000-0000-0123",
-            "stage_id": "000-0000-0002",
-            "parameters": "go package",
-            "status": "success",
-            "created_at": "2025-07-15 10:30",
-            "updated_at": "2025-07-15 10:30",
-        }
-      },{
         "id": "000-0000-0003",
         "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx02",
         "group_name": "卡点",
         "group_order": 2,
-        "stage_name": "责任人： xxx",
+        "stage_type": "checkpoint",
+        "stage_name": "人工卡点",
         "stage_order": 1,
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
@@ -271,7 +255,8 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
         "group_name": "部署",
         "group_order": 3,
-        "stage_name": "alpha环境",
+        "stage_type": "deploy",
+        "stage_name": "部署环境",
         "stage_order": 1,
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
@@ -286,30 +271,12 @@ const generateDefaultPipeline = (): Pipeline[] =>[
             "updated_at": "2025-07-15 10:30",
         }
       },{
-        "id": "000-0000-0005",
-        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
-        "group_name": "部署",
-        "group_order": 3,
-        "stage_name": "beta环境",
-        "stage_order": 2,
-        "pipeline_id": "0000-0000-0123",
-        "created_at": "2025-07-15 10:30",
-        "updated_at": "2025-07-15 10:30",
-        "pipeline_jobs" :{
-            "id": "000-0000-0000-1116",
-            "pipeline_id": "0000-0000-0123",
-            "stage_id": "000-0000-0005",
-            "parameters": "go deploy",
-            "status": "pending",
-            "created_at": "2025-07-15 10:30",
-            "updated_at": "2025-07-15 10:30",
-        }
-      },{
         "id": "000-0000-0006",
         "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx04",
         "group_name": "测试",
         "group_order": 4,
-        "stage_name": "自动测试用例",
+        "stage_type": "test",
+        "stage_name": "测试任务",
         "stage_order": 1,
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",

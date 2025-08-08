@@ -24,7 +24,9 @@
           <EditStage
             :visible="showEditActionDialog"
             :title="editActionDialogTitle"
-            :action-name="editActionName"
+            :group-name="editGroupName"
+            :stage-type="currentEditStageType"
+            :stage-name="currentEditStageName"
             :group-id="currentEditGroupId"
             @update:visible="(value: boolean) => showEditActionDialog = value"
             @confirm="confirmEditAction"
@@ -44,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, defineEmits, defineProps, toRefs,computed } from 'vue';
+import { ref, reactive, defineEmits, defineProps, computed } from 'vue';
 import axios from 'axios';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { Plus, Operation } from '@element-plus/icons-vue';
@@ -56,8 +58,10 @@ const emit = defineEmits(['cancel', 'success']);
 
 const currentInsertIndex = ref(0);
 const showEditActionDialog = ref(false);
-const editActionName = ref('');
+const editGroupName = ref('');
 const editActionDialogTitle = ref('编辑');
+const currentEditStageType = ref('');
+const currentEditStageName = ref('');
 const currentEditGroupId = ref<string>('');
 const pipelineForm = ref<FormInstance>();
 
@@ -92,19 +96,18 @@ const generateTempId = () => {
   return 'temp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 };
 
-const pipelineActionsDefault = ref<Pipeline_stages[]>([
-  {
-    group_id: generateTempId(),
-    group_name: '新建分组',
-    group_order: 0,
-    stage_name: '新建阶段',
-    stage_order: 1,
-    pipeline_jobs: {
-      parameters: '{}',
-      status: ''
-    }
+const newStage: Pipeline_stages = {
+  group_id: generateTempId(),
+  group_name: '新建阶段',
+  group_order: 0,
+  stage_type: '',
+  stage_name: '新建任务',
+  stage_order: 1,
+  pipeline_jobs: {
+    parameters: '{}',
+    status: ''
   }
-]);
+};
 
 // 对pipelineActionsDefault进行处理，将group_name相同的阶段合并，生成groupList
 // 保留group_order、group_name、group_id，剔除默认新增节点、阶段
@@ -127,19 +130,6 @@ const groupList = computed(() => {
 // 添加新操作的处理函数
 const handleAddAction = (index: number) => {
   currentInsertIndex.value = index;
-  // 直接创建新的空action
-  const newStage: Pipeline_stages = {
-    group_id: generateTempId(),
-    group_name: '新建分组',
-    group_order: 0,
-    stage_name: '新建阶段',
-    stage_order: 1,
-    pipeline_jobs: {
-      parameters: '{}',
-      status: ''
-    }
-  };
-
   // 插入到指定位置
   pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, newStage);
 
@@ -153,17 +143,21 @@ const handleAddAction = (index: number) => {
 
 // 添加新编辑的处理函数
 const handleEditAction = (group_id: string) => {
+  console.log("group_id:", group_id)
+
   // 找到具有指定group_id的第一个action
   const targetAction = pipelineActionsDefault.value.find(
     item => item.group_id === group_id
   );
-  
+  console.log("targetAction:", targetAction)
   if (targetAction) {
     currentInsertIndex.value = pipelineActionsDefault.value.findIndex(
-      item => item.group_id === group_id
+      item => item.group_order === targetAction.group_order
     );
-    editActionName.value = targetAction.group_name;
+    editGroupName.value = targetAction.group_name;
     currentEditGroupId.value = targetAction.group_id!; 
+    currentEditStageType.value = targetAction.stage_type!;
+    currentEditStageName.value = targetAction.stage_name!;
     showEditActionDialog.value = true;
   } else {
     ElMessage.error('未找到对应的操作');
@@ -195,6 +189,7 @@ const confirmEditAction = (data: { stages: Array<{ name: string; type: string; c
         group_id: currentEditGroupId.value,
         group_name: group_name,
         group_order: currentInsertIndex.value,
+        stage_type: stage.type,
         stage_name: stage.name,
         stage_order: index + 1,
         pipeline_jobs: {
@@ -238,6 +233,21 @@ const handleSubmit = async () => {
 const handleCancel = () => {
   emit('cancel');
 };
+
+const pipelineActionsDefault = ref<Pipeline_stages[]>([
+  {
+    group_id: generateTempId(),
+    group_name: '新建阶段',
+    group_order: 0,
+    stage_type: '',
+    stage_name: '新建任务',
+    stage_order: 1,
+    pipeline_jobs: {
+      parameters: '{}',
+      status: ''
+    }
+  }
+]);
 
 </script>
 
