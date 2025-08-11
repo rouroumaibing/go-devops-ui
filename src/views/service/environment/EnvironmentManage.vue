@@ -56,7 +56,7 @@
                 <el-descriptions :column="1">
                   <el-descriptions-item label="环境名称">{{ selectedEnvironment.name }}</el-descriptions-item>
                   <el-descriptions-item label="更新时间">{{ selectedEnvironment.updated_at }}</el-descriptions-item>
-                  <el-descriptions-item label="所属分组">{{ selectedGroup?.group || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="所属分组">{{ selectedGroup?.name || '-' }}</el-descriptions-item>
                 </el-descriptions>
               </el-card>
             </el-col>
@@ -135,15 +135,12 @@ const state = reactive({
   treeHeight: 0
 })
 
-// 解构响应式状态
 const { query, treeData, loading, selectedEnvironment, selectedGroup, addNodeDialogVisible, environmentManagementDialogVisible, currentParentNode, newNodeForm, expandedKeys, treeHeight } = toRefs(state)
 
-// 组件引用
 const treeRef = ref<TreeInstance | null>(null);
 const treeContainer = ref<HTMLDivElement | null>(null);
 const addNodeFormRef = ref<FormInstance | null>(null);
 
-// 树形结构配置
 const props = {
   label: 'name',
   children: 'children',
@@ -153,9 +150,8 @@ const props = {
   }
 };
 
-// 节点点击处理函数
 const handleNodeClick = (data: TreeNodeData) => {
-  if (isEnvironmentTreeNode(data) && data.isEnvironment) {
+  if (isEnvironmentTreeNode(data) && data.is_env) {
     selectedEnvironment.value = data;
     findParentGroup(data);
   } else {
@@ -164,23 +160,20 @@ const handleNodeClick = (data: TreeNodeData) => {
   }
 };
 
-// 查找所属分组
 const findParentGroup = (node: EnvironmentTreeNode) => {
-  if (!treeRef.value || !node.id) return;  // 增加对 node.id 的检查
+  if (!treeRef.value || !node.id) return; 
   const treeNode = treeRef.value.getNode(node.id);
   if (treeNode && treeNode.parent && treeNode.parent.data) {
     selectedGroup.value = treeNode.parent.data as EnvironmentTreeNode;
   }
 };
 
-// 显示添加节点对话框
 const showAddNodeDialog = (parentNode: EnvironmentTreeNode) => {
   currentParentNode.value = parentNode;
   newNodeForm.value = { name: '', is_env: true, type: '' };
   addNodeDialogVisible.value = true;
 };
 
-// 收集所有节点ID用于默认展开
 const collectAllNodeIds = (nodes: EnvironmentTreeNode[], ids: number[] = []): number[] => {
   nodes.forEach(node => {
     if (node.id) ids.push(node.id);
@@ -191,11 +184,9 @@ const collectAllNodeIds = (nodes: EnvironmentTreeNode[], ids: number[] = []): nu
   return ids;
 };
 
-// 添加子节点
 const addChildNode = async () => {
   if (!currentParentNode.value) return;
 
-  // 表单验证
   if (addNodeFormRef.value) {
     try {
       await addNodeFormRef.value.validate();
@@ -211,19 +202,19 @@ const addChildNode = async () => {
     // 创建环境节点
     newNode = {
       id: Date.now(),
-      env_group: currentParentNode.value?.name || '', // 使用父节点名称作为env_group
+      env_group: currentParentNode.value?.name || '', 
       name: newNodeForm.value.name,
       is_env: true,
-      children: [] // 确保环境节点有children数组
+      children: [] 
     };
   } else {
     // 创建分组节点
     newNode = {
       id: Date.now(),
-      env_group: currentParentNode.value?.name || '', // 使用父节点名称作为env_group
+      env_group: currentParentNode.value?.name || '', 
       name: newNodeForm.value.name,
       is_env: false,
-      children: [] // 确保分组节点有children数组
+      children: []
     };
   }
 
@@ -233,14 +224,11 @@ const addChildNode = async () => {
       currentParentNode.value.children = [];
     }
     currentParentNode.value.children.push(newNode);
-    // 强制更新treeData以触发响应式变化
     treeData.value = [...treeData.value];
   }
 
-  // 关闭对话框
   addNodeDialogVisible.value = false;
 
-  // 显示成功消息
   ElMessage.success(`成功添加${newNode.is_env ? '环境' : '分组'}: ${newNode.name}`);
 };
 
@@ -261,9 +249,7 @@ const handleEditEnvironment = (environment: Environment) => {
   }
 };
 
-// 将handleDeleteEnvironment函数修改为:
 const handleDeleteEnvironment = (environment: Environment) => {
-  // 访问ref的值需要使用.value
   const currentGroup = selectedGroup.value;
   if (environment && currentGroup) {
     ElMessageBox.confirm('确定要删除该环境吗？', '警告', {
@@ -271,7 +257,6 @@ const handleDeleteEnvironment = (environment: Environment) => {
       cancelButtonText: '取消',
       type: 'warning'
     }).then(() => {
-
       const latestGroup = selectedGroup.value;
       if (latestGroup && latestGroup.children) {
         latestGroup.children = latestGroup.children.filter((item: EnvironmentTreeNode) =>
@@ -285,7 +270,6 @@ const handleDeleteEnvironment = (environment: Environment) => {
 };
 
 const filterMethod = (value: string, data: TreeNodeData): boolean => {
-  // 添加类型守卫确保安全转换
   if (!isEnvironmentTreeNode(data)) return false;
   if (!value) return true;
   return data.label.toLowerCase().includes(value.toLowerCase());
@@ -335,18 +319,10 @@ const fetchEnv = async () => {
   } catch (error) {
     ElMessage.error('加载环境数据失败，请重试');
     treeData.value = generateDefaultEnvironmentTree();
-    console.log("默认环境树数据:", treeData.value);
   } finally {
     loading.value = false;
   }
 };
-
-// 监听树数据变化，自动展开所有节点
-watch(treeData, (newData) => {
-  if (newData.length > 0) {
-    expandedKeys.value = collectAllNodeIds(newData);
-  }
-});
 
 // 计算属性：过滤环境节点
 const filteredEnvironments = computed<Environment[]>(() => {

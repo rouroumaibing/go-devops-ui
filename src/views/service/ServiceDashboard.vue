@@ -1,51 +1,92 @@
 <template>
   <el-card class="pipeline-dashboard-container">
     <el-tabs v-model="activeTab" type="border-card" @tab-change="handleTabChange">
-      <el-tab-pane label="组件管理" name="component">
-        <ComponentManage />
-      </el-tab-pane>
-      <el-tab-pane label="流水线管理" name="manage">
-        <PipelineManage />
-      </el-tab-pane>
-      <el-tab-pane label="环境管理" name="environment">
-        <EnvironmentManage />
-      </el-tab-pane>
-      <el-tab-pane label="构建管理" name="build">
-        <BuildManage />
-      </el-tab-pane>
-      <el-tab-pane label="变更管理" name="change">
-        <ChangeManage />
-      </el-tab-pane>
-      <el-tab-pane label="产物管理" name="product">
-        <ProductManage />
-      </el-tab-pane>
+      <el-tab-pane v-for="tab in tabsConfig" :key="tab.name" :label="tab.label" :name="tab.name"></el-tab-pane>
     </el-tabs>
+    <div class="tab-content">
+      <div v-if="!currentComponent" class="loading">加载中...</div>
+      <component :is="currentComponent" v-else />
+    </div>
   </el-card>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, shallowRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { TabPaneName } from 'element-plus';
-import ComponentManage from './component/ComponentManage.vue';
-import PipelineManage from './pipeline/PipelineManage.vue';
-import EnvironmentManage from './environment/EnvironmentManage.vue';
-import BuildManage from './build/BuildManage.vue';
-import ChangeManage from './change/ChangeManage.vue';
-import ProductManage from './product/ProductManage.vue';
+import type { Component } from 'vue';
+import { ElTabs, ElTabPane, ElCard, ElMessage } from 'element-plus';
 
-const activeTab = ref('component');
+import type { TabPaneName as ElTabPaneName } from 'element-plus';
+
+interface TabConfig {
+  label: string;
+  name: TabPaneName;
+  component: () => Promise<{ default: Component }>;
+}
+
+type TabPaneName = 'component' | 'manage' | 'environment' | 'build' | 'change' | 'product';
+
+const tabsConfig: TabConfig[] = [
+  { label: '组件管理', name: 'component', component: () => import('./component/ComponentManage.vue') },
+  { label: '流水线管理', name: 'manage', component: () => import('./pipeline/PipelineManage.vue') },
+  { label: '环境管理', name: 'environment', component: () => import('./environment/EnvironmentManage.vue') },
+  { label: '构建管理', name: 'build', component: () => import('./build/BuildManage.vue') },
+  { label: '变更管理', name: 'change', component: () => import('./change/ChangeManage.vue') },
+  { label: '产物管理', name: 'product', component: () => import('./product/ProductManage.vue') },
+];
+
+// 4. 创建组件映射表（从tabsConfig生成）
+const componentMap: Record<TabPaneName, () => Promise<{ default: Component }>> = {
+  ...tabsConfig.reduce((map, tab) => {
+    map[tab.name] = tab.component;
+    return map;
+  }, {} as Record<TabPaneName, () => Promise<{ default: Component }>>)
+};
+
+const activeTab = ref<TabPaneName>('component');
 const route = useRoute();
 const router = useRouter();
+// Use shallowRef instead of ref
+const loadedComponents = shallowRef<Record<string, Component>>({});
+
+// 当前要显示的组件
+const currentComponent = computed(() => {
+  return loadedComponents.value[activeTab.value];
+});
 
 onMounted(() => {
   const tabName = route.query.tab as TabPaneName;
-  if (tabName) {
-    activeTab.value = String(tabName);
+  if (tabName && tabsConfig.some(tab => tab.name === tabName)) {
+    activeTab.value = tabName;
   }
+  // 加载初始选中的组件
+  loadComponent(activeTab.value);
 });
-const handleTabChange = (tabName: TabPaneName) => {
-  router.push({ path: route.path, query: { ...route.query, tab: String(tabName) } });
+
+// 处理页签切换
+const handleTabChange = async (tabName: ElTabPaneName) => {
+  if (typeof tabName === 'string' && tabsConfig.some(tab => tab.name === tabName)) {
+    router.push({ path: route.path, query: { ...route.query, tab: tabName } });
+    await loadComponent(tabName as TabPaneName);
+    activeTab.value = tabName as TabPaneName;
+  }
+};
+
+// 加载组件
+const loadComponent = async (tabName: TabPaneName) => {
+  if (!loadedComponents.value[tabName] && componentMap[tabName]) {
+    try {
+      const module = await componentMap[tabName]();
+      if (module && module.default) {
+        loadedComponents.value[tabName] = module.default;
+        loadedComponents.value = { ...loadedComponents.value };
+      } else {
+        throw new Error(`组件模块无效: ${tabName}`);
+      }
+    } catch (error) {
+      ElMessage.error(`加载${tabName}组件失败`);
+    }
+  }
 };
 </script>
 
@@ -54,4 +95,8 @@ const handleTabChange = (tabName: TabPaneName) => {
   padding: 20px;
   height: 100%;
 }
+.tab-content {
+  margin-top: 20px;
+}
+
 </style>
