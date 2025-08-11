@@ -80,7 +80,7 @@ import { ElMessage, ElForm } from 'element-plus';
 import { useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
-import PipelineRun from './PipelineRun.vue';
+import PipelineRun from './PipelineMap.vue';
 
 import type { Pipeline } from '@/types/pipeline';
 

@@ -15,11 +15,25 @@
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch } from 'vue';
 
-const props = defineProps({"config":{"type":Object,"default":()=>({})}});
+// 定义组件属性，接收配置对象作为参数，默认值为空对象
+const props = defineProps({
+  "config": {
+    "type": Object,
+    "default": () => ({})
+  }
+});
 
-const emits = defineEmits<{(e:'update:config', config:{buildCommand:string;imageName:string;buildDir:string;}):void}>();
+// 定义组件事件，用于向父组件更新配置
+const emits = defineEmits<{
+  (e: 'update:config', config: { buildCommand: string; imageName: string; buildDir: string; }): void
+}>();
 
-const buildConfig = ref<{buildCommand:string;imageName:string;buildDir:string;}>({
+// 创建响应式变量存储构建配置，初始值从props中获取或使用空字符串
+const buildConfig = ref<{
+  buildCommand: string;
+  imageName: string;
+  buildDir: string;
+}>({
   buildCommand: props.config?.buildCommand || '',
   imageName: props.config?.imageName || '',
   buildDir: props.config?.buildDir || ''

@@ -66,10 +66,10 @@
         
         <component 
           :is="currentStageComponent"
-          v-if="selectedStageType"
+          v-if="selectedJobType"
           style="margin-top: 15px;"
-          :config="currentStageConfig"
-          @update:config="handleStageConfigUpdate"
+          :config="currentJobConfig"
+          @update:config="handleJobConfigUpdate"
         ></component>
       </el-col>
     </el-row>
@@ -84,14 +84,15 @@
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch, computed, onMounted, nextTick } from 'vue';
 import { ElMessageBox, ElForm } from 'element-plus';
-import BuildStage from './BuildStage.vue';
-import CheckPointStage from './CheckPointStage.vue';
-import TestStage from './TestStage.vue';
+import BuildStage from './stages/BuildStage.vue';
+import CheckPointStage from './stages/CheckPointStage.vue';
+import TestStage from './stages/TestStage.vue';
 import { StageType } from '@/types/pipeline-stagetype';
 import { Pipeline_stages } from '@/types/pipeline';
 
 interface StageConfig {
-  type: string;
+  stage_type: string;
+  job_type: string;
   config: Record<string, any>;
 }
 
@@ -105,12 +106,12 @@ interface ConfirmData {
   group_name: string;
 }
 
-const stageConfig = ref<Record<string, StageConfig>>({});
+
 const selectedStageType = ref<string>('');
 const selectedJobType = ref<string>('');
 const selectedKeys = ref<string[]>([]);
 const currentJob = ref<Pipeline_stages | null>(null);
-const currentStageConfig = ref<Record<string, any>>({});
+const currentJobConfig = ref<Record<string, any>>({});
 const menuData = ref<Pipeline_stages[]>([]);
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
 const formData = ref<{ group_name: string; stage_name: string }>({ group_name: '', stage_name: '' });
@@ -122,14 +123,16 @@ const rules = ref<Record<string, any>>({
 // Props和Emits
 const props = defineProps({
   visible: Boolean,
-  title: { type: String, default: '编辑阶段' },
+  title: { type: String, default: '编辑ing' },
   stageId: Number,
   groupName: String, 
   stageType: String,
   stageName: String,
-  groupId: String
+  groupId: String,
+  stageConfigs: { type: Object, default: () => ({}) }
 });
 const visible = ref<boolean>(props.visible);
+const stageConfig = ref<Record<string, StageConfig>>({...props.stageConfigs});
 
 const initMenuData = () => {
   const groupName = props.groupName || '新建阶段';
@@ -138,7 +141,7 @@ const initMenuData = () => {
 
   formData.value.group_name = groupName;
   formData.value.stage_name = stageName;
-
+ 
   menuData.value = [{
     group_name: groupName,
     stage_order: 0,
@@ -152,20 +155,29 @@ const initMenuData = () => {
     const stageType = StageType.find(type => type.value === defaultStage.stage_type)?.name || '';
     if (stageType) {
       selectedStageType.value = stageType;
+      selectedJobType.value = StageType
+        .flatMap(type => type.job || [])
+        .find(job => job.value === defaultStage.stage_name)
+        ?.name || '';
+    }else{
+      selectedStageType.value = '';
+      selectedJobType.value = '';
     }
+
     // 自动选择第一个节点
     currentJob.value = defaultStage;
     selectedKeys.value = [defaultStage.stage_order?.toString() || ''];
     const stageOrder = defaultStage.stage_order?.toString() || '';
-    currentStageConfig.value = stageConfig.value[stageOrder]?.config || {};
+    console.log('stageConfig.value[stageOrder]?.config:', stageConfig.value[stageOrder]?.config);
+    currentJobConfig.value = stageConfig.value[stageOrder]?.config || {};
   }
 };
-
 
 const emits = defineEmits<{
   (e: 'update:visible', value: boolean): void;
   (e: 'confirm', data: ConfirmData): void;
   (e: 'cancel'): void;
+  (e: 'update:stage-configs', configs: Record<string, StageConfig>): void;
 }>();
 
 // 计算属性 - 动态切换组件
@@ -183,13 +195,15 @@ const currentStageComponent = computed(() => {
 });
 
 // 方法 - 更新配置
-const handleStageConfigUpdate = (config: Record<string, any>): void => {
+const handleJobConfigUpdate = (config: Record<string, any>): void => {
   if (currentJob.value) {
     const stageOrder = currentJob.value.stage_order?.toString() || '';
     stageConfig.value[stageOrder] = {
-      type: currentJob.value.stage_type || '',
+      stage_type: currentJob.value.stage_type || '',
+      job_type: currentJob.value.stage_name || '',
       config
     };
+    emits('update:stage-configs', stageConfig.value);
   }
 };
 
@@ -207,10 +221,11 @@ const handleConfirm = async (): Promise<void> => {
 
     const stages = menuData.value.map(node => {
       const stageOrder = node.stage_order?.toString() || '';
-      const stageInfo = stageConfig.value[stageOrder] || { type: '', config: {} };
+      const stageInfo = stageConfig.value[stageOrder] || { stage_type: '', job_type: '', config: {} };
       return {
         name: node.stage_name || '',
-        type: stageInfo.type,
+        type: stageInfo.stage_type,
+        job_type: stageInfo.job_type,
         config: stageInfo.config,
         stage_order: node.stage_order || 0
       };
@@ -249,7 +264,7 @@ const handleJobClick = (data: any, node: any, e: MouseEvent): void => {
     ?.name || '';
 
   nextTick(() => {
-    currentStageConfig.value = { ...(stageConfig.value[currentJob.value?.stage_order?.toString() ?? '']?.config || {}) };
+    currentJobConfig.value = { ...(stageConfig.value[currentJob.value?.stage_order?.toString() ?? '']?.config || {}) };
   });
 };
 
@@ -301,11 +316,12 @@ const addJob = (job: Pipeline_stages): void => {
 
     const newStageOrder = newNode.stage_order?.toString() || '';
     stageConfig.value[newStageOrder] = {
-      type: newNode.stage_type || '',
+      stage_type: newNode.stage_type || '',
+      job_type: newNode.stage_name || '',
       config: {}
     };
     
-    currentStageConfig.value = stageConfig.value[newStageOrder].config;
+    currentJobConfig.value = stageConfig.value[newStageOrder].config;
   }
 };
 
@@ -400,6 +416,16 @@ watch(
   { immediate: true }
 );
 
+watch(
+  () => props.stageConfigs,
+  (newConfigs) => {
+    if (newConfigs) {
+      stageConfig.value = {...newConfigs};
+    }
+  },
+  { deep: true }
+);
+
 watch(visible, (val) => {
   emits('update:visible', val);
 });
@@ -426,7 +452,7 @@ watch(selectedJobType, (newVal) => {
       // 更新当前节点的阶段名称
       currentJob.value.stage_name = stageTypeItem.job?.find(job => job.name === newVal)?.value 
       // 配置也需要切换到新的配置
-      currentStageConfig.value = stageConfig.value?.[currentJob.value?.stage_order?.toString() || '']?.config || {};
+      currentJobConfig.value = stageConfig.value?.[currentJob.value?.stage_order?.toString() || '']?.config || {};
       // 触发菜单数据更新
       menuData.value = [...menuData.value];
     }

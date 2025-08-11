@@ -22,15 +22,24 @@
             </div>
         </el-form>
           <EditStage
+            :key="currentEditGroupId"
             :visible="showEditActionDialog"
             :title="editActionDialogTitle"
             :group-name="editGroupName"
             :stage-type="currentEditStageType"
             :stage-name="currentEditStageName"
             :group-id="currentEditGroupId"
+            :stage-configs="(allStageConfigs.value || {})[currentEditGroupId || ''] || {}"
             @update:visible="(value: boolean) => showEditActionDialog = value"
             @confirm="confirmEditAction"
-            @cancel="() => showEditActionDialog = false" 
+            @cancel="() => showEditActionDialog = false"
+            @update:stage-configs="(configs) => {
+              if (currentEditGroupId) {
+                // Ensure allStageConfigs.value is initialized as an object
+                allStageConfigs.value = allStageConfigs.value || {};
+                allStageConfigs.value[currentEditGroupId] = configs;
+              }
+            }"
           ></EditStage>
         <div class="form-actions">
           <el-button @click="handleCancel">取消</el-button>
@@ -46,12 +55,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, defineEmits, defineProps, computed } from 'vue';
+import { ref, reactive, defineEmits, defineProps, computed, nextTick } from 'vue';
 import axios from 'axios';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { Plus, Operation } from '@element-plus/icons-vue';
-import EditStage from './stages/EditStage.vue';
-import PipelineRun from './PipelineRun.vue';
+import EditStage from './PipelineStageManage.vue';
+import PipelineRun from './PipelineMap.vue';
 import { Pipeline, Pipeline_stages } from '@/types/pipeline';
 
 const emit = defineEmits(['cancel', 'success']);
@@ -64,6 +73,9 @@ const currentEditStageType = ref('');
 const currentEditStageName = ref('');
 const currentEditGroupId = ref<string>('');
 const pipelineForm = ref<FormInstance>();
+// 存储全部阶段配置
+const allStageConfigs = ref<Record<string, Record<string, any>>>({});
+
 
 const props = defineProps<{
   componentId: string;
@@ -96,17 +108,19 @@ const generateTempId = () => {
   return 'temp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 };
 
-const newStage: Pipeline_stages = {
-  group_id: generateTempId(),
-  group_name: '新建阶段',
-  group_order: 0,
-  stage_type: '',
-  stage_name: '新建任务',
-  stage_order: 1,
-  pipeline_jobs: {
-    parameters: '{}',
-    status: ''
-  }
+const NewStage = (): Pipeline_stages => {
+  return {
+    group_id: generateTempId(),
+    group_name: '新建阶段',
+    group_order: 0,
+    stage_type: '',
+    stage_name: '新建任务',
+    stage_order: 1,
+    pipeline_jobs: {
+      parameters: '{}',
+      status: ''
+    }
+  };
 };
 
 // 对pipelineActionsDefault进行处理，将group_name相同的阶段合并，生成groupList
@@ -131,7 +145,7 @@ const groupList = computed(() => {
 const handleAddAction = (index: number) => {
   currentInsertIndex.value = index;
   // 插入到指定位置
-  pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, newStage);
+  pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, NewStage());
 
   // 重新计算所有group_order（从1开始递增）
   pipelineActionsDefault.value.forEach((stage, index) => {
@@ -143,13 +157,11 @@ const handleAddAction = (index: number) => {
 
 // 添加新编辑的处理函数
 const handleEditAction = (group_id: string) => {
-  console.log("group_id:", group_id)
 
   // 找到具有指定group_id的第一个action
   const targetAction = pipelineActionsDefault.value.find(
     item => item.group_id === group_id
   );
-  console.log("targetAction:", targetAction)
   if (targetAction) {
     currentInsertIndex.value = pipelineActionsDefault.value.findIndex(
       item => item.group_order === targetAction.group_order
@@ -158,7 +170,9 @@ const handleEditAction = (group_id: string) => {
     currentEditGroupId.value = targetAction.group_id!; 
     currentEditStageType.value = targetAction.stage_type!;
     currentEditStageName.value = targetAction.stage_name!;
+    
     showEditActionDialog.value = true;
+
   } else {
     ElMessage.error('未找到对应的操作');
   }
@@ -234,20 +248,16 @@ const handleCancel = () => {
   emit('cancel');
 };
 
+
+
+// 初始化菜单
 const pipelineActionsDefault = ref<Pipeline_stages[]>([
   {
-    group_id: generateTempId(),
-    group_name: '新建阶段',
-    group_order: 0,
-    stage_type: '',
-    stage_name: '新建任务',
-    stage_order: 1,
-    pipeline_jobs: {
-      parameters: '{}',
-      status: ''
-    }
+   ...NewStage()
   }
 ]);
+
+
 
 </script>
 
