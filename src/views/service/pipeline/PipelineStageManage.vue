@@ -168,7 +168,6 @@ const initMenuData = () => {
     currentJob.value = defaultStage;
     selectedKeys.value = [defaultStage.stage_order?.toString() || ''];
     const stageOrder = defaultStage.stage_order?.toString() || '';
-    console.log('stageConfig.value[stageOrder]?.config:', stageConfig.value[stageOrder]?.config);
     currentJobConfig.value = stageConfig.value[stageOrder]?.config || {};
   }
 };
