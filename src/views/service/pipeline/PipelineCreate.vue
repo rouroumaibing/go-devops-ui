@@ -6,7 +6,8 @@
           <el-input v-model="formData.name" placeholder="请输入流水线名称" maxLength="50"></el-input>
         </el-form-item>
             <div class="button-container">
-              <el-button :icon="Plus" circle @click="handleAddAction(0) "/>
+              <el-button :icon="Plus" circle @click="handleAddPielineAction(0) "/>
+
               <template v-for="(action, index) in groupList" :key="action.group_id">
                 <div size="small" round text
                   class="radius"
@@ -15,9 +16,9 @@
                   }"
                 >
                   {{ action.group_name }}
-                  <el-button :icon="Operation" @click="handleEditAction(action.group_id)"/>
+                  <el-button :icon="Operation" @click="handleEditPielineAction(action.group_id)"/>
                 </div>
-                <el-button :icon="Plus" circle @click="handleAddAction(index + 1)" />
+                <el-button :icon="Plus" circle @click="handleAddPielineAction(index + 1)" />
               </template>
             </div>
         </el-form>
@@ -31,7 +32,8 @@
             :group-id="currentEditGroupId"
             :stage-configs="(allStageConfigs.value || {})[currentEditGroupId || ''] || {}"
             @update:visible="(value: boolean) => showEditActionDialog = value"
-            @confirm="confirmEditAction"
+            @confirm="confirmEditPielineAction"
+
             @cancel="() => showEditActionDialog = false"
             @update:stage-configs="(configs) => {
               if (currentEditGroupId) {
@@ -42,8 +44,9 @@
             }"
           ></EditStage>
         <div class="form-actions">
-          <el-button @click="handleCancel">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">提交</el-button>
+          <el-button @click="handlePielineCancel">取消</el-button>
+          <el-button type="primary" @click="handlePielineSubmit">提交</el-button>
+
         </div>
       </div>
 
@@ -142,7 +145,7 @@ const groupList = computed(() => {
 });
 
 // 添加新操作的处理函数
-const handleAddAction = (index: number) => {
+const handleAddPielineAction = (index: number) => {
   currentInsertIndex.value = index;
   // 插入到指定位置
   pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, NewStage());
@@ -156,7 +159,7 @@ const handleAddAction = (index: number) => {
 };
 
 // 添加新编辑的处理函数
-const handleEditAction = (group_id: string) => {
+const handleEditPielineAction = (group_id: string) => {
 
   // 找到具有指定group_id的第一个action
   const targetAction = pipelineActionsDefault.value.find(
@@ -178,7 +181,7 @@ const handleEditAction = (group_id: string) => {
   }
 };
 
-const confirmEditAction = (data: { stages: Array<{ name: string; type: string; config: any; stage_order: number }>, group_name: string }) => {
+const confirmEditPielineAction = (data: { stages: Array<{ name: string; type: string; config: any; stage_order: number }>, group_name: string }) => {
   const { stages, group_name } = data;
   const groupIndex = pipelineActionsDefault.value.findIndex(
     item => item.group_id === currentEditGroupId.value
@@ -220,7 +223,7 @@ const confirmEditAction = (data: { stages: Array<{ name: string; type: string; c
   ElMessage.success('操作编辑成功');
 };
 
-const handleSubmit = async () => {
+const handlePielineSubmit = async () => {
   if (!pipelineForm.value) return;
 
   const resultTableData: Omit<Pipeline, 'id'> = {
@@ -244,7 +247,7 @@ const handleSubmit = async () => {
   }
 };
 
-const handleCancel = () => {
+const handlePielineCancel = () => {
   emit('cancel');
 };
 
