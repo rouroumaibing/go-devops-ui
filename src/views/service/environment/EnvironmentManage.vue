@@ -36,7 +36,8 @@
           <div class="detail-header">
             <h2>{{ selectedEnvironment.name }} 详情</h2>
               <div>
-                <el-button type="primary" icon="Setting" @click="handleEnvironmentManagement">环境管理</el-button>
+                <el-button type="primary" icon="Edit" @click="selectedEnvironment && handleEditEnvironment(selectedEnvironment)">编辑</el-button>
+                <el-button type="danger" icon="Delete" @click="selectedEnvironment && handleDeleteEnvironment(selectedEnvironment)">删除</el-button>
               </div>
           </div>
 
@@ -45,9 +46,13 @@
               <el-card>
                 <template #header><h3>基本信息</h3></template>
                 <el-descriptions :column="1">
+                  <el-descriptions-item label="环境id">{{ selectedEnvironment.id }}</el-descriptions-item>
                   <el-descriptions-item label="环境名称">{{ selectedEnvironment.name }}</el-descriptions-item>
+                  <el-descriptions-item label="服务地址">{{ selectedEnvironment.service_addr }}</el-descriptions-item>
+                  <el-descriptions-item label="描述">{{ selectedEnvironment.description }}</el-descriptions-item>
                   <el-descriptions-item label="更新时间">{{ selectedEnvironment.updated_at }}</el-descriptions-item>
                   <el-descriptions-item label="所属分组">{{ selectedGroup?.name || '-' }}</el-descriptions-item>
+                  <el-descriptions-item label="创建时间">{{ selectedEnvironment.created_at }}</el-descriptions-item>
                 </el-descriptions>
               </el-card>
             </el-col>
@@ -67,9 +72,10 @@
           <el-input v-model="newNodeForm.name" placeholder="请输入节点名称"></el-input>
         </el-form-item>
         <el-form-item v-if="currentParentNode" label="节点类型">
-          <el-radio-group v-model="newNodeForm.is_env">
-            <el-radio :label="true">环境节点</el-radio>
-            <el-radio :label="false">分组节点</el-radio>
+          <el-radio-group v-model="newNodeForm.env_type">
+            <el-radio :value="'env_node'">环境节点</el-radio>
+            <el-radio :value="'env_child_group'">子分组</el-radio>
+            <el-radio :value="'env_same_group'">同级分组</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -81,61 +87,98 @@
       </template>
     </el-dialog>
 
-    <!-- 环境管理对话框改为抽屉 -->
-    <el-drawer
+    <!-- 添加编辑环境对话框 -->
+    <el-dialog 
       v-model="environmentManagementDialogVisible"
-      direction="rtl"
-      title="环境管理"
-      size="70%"
+      title="编辑环境" 
+      width="500px"
     >
+      <el-form 
+        ref="editEnvironmentFormRef" 
+        :model="editEnvironmentForm" 
+        label-width="100px"
+        :rules="editEnvironmentRules"
       >
-        <el-table :data="allEnvironments" style="width: 100%">
-          <el-table-column prop="name" label="环境名称" />
-          <el-table-column prop="status" label="状态" />
-          <el-table-column prop="updated_at" label="更新时间" />
-          <el-table-column label="操作">
-            <template #default="{ row }">
-              <el-button size="small" @click="handleEditEnvironment(row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDeleteEnvironment(row)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-drawer>
+        <el-form-item label="环境名称" prop="name">
+          <el-input v-model="editEnvironmentForm.name" placeholder="请输入环境名称"></el-input>
+        </el-form-item>
+        
+        <el-form-item label="服务地址" prop="service_addr">
+          <el-input v-model="editEnvironmentForm.service_addr" placeholder="请输入服务地址"></el-input>
+        </el-form-item>
+        
+        <el-form-item label="描述" prop="description">
+          <el-input 
+            v-model="editEnvironmentForm.description" 
+            type="textarea" 
+            :rows="3"
+            placeholder="请输入环境描述"
+          ></el-input>
+        </el-form-item>
+        
+      </el-form>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="environmentManagementDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveEnvironmentEdit">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     </el-card>
 </template>
 
 <script setup lang="ts">
 import axios from 'axios';
-import { ref, onMounted, watch, onBeforeUnmount, reactive, toRefs, computed } from 'vue';
-import { ElMessage, ElMessageBox, ElTreeV2, ElInput, ElButton, ElIcon, ElLoading, ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElSelect, ElOption } from 'element-plus';
-import { Search } from '@element-plus/icons-vue';
+import { ref, onMounted, onBeforeUnmount, reactive, toRefs, computed } from 'vue';
+import { ElMessage, ElMessageBox, ElTreeV2, ElInput, ElButton, ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer,  ElRow, ElCol, ElCard } from 'element-plus';
 import { useRoute } from 'vue-router';
-import type { TreeNodeData, TreeInstance, FormInstance } from 'element-plus';
+import type { TreeNodeData, TreeInstance, FormInstance, FormItemRule } from 'element-plus';
 import { Environment } from '@/types/environment-manage';
 
 interface EnvironmentTreeNode extends Environment, TreeNodeData {}
 
 const state = reactive({
-  query: '',
   treeData: [] as EnvironmentTreeNode[],
   loading: false,
-  selectedEnvironment: null as Environment | null,
+  selectedEnvironment: null as EnvironmentTreeNode | null,
   selectedGroup: null as EnvironmentTreeNode | null,
   addNodeDialogVisible: false,
   environmentManagementDialogVisible: false,
   currentParentNode: null as EnvironmentTreeNode | null,
-  newNodeForm: { name: '', is_env: true, type: '' },
   expandedKeys: [] as number[],
   treeHeight: 0
 })
 
-const { query, treeData, loading, selectedEnvironment, selectedGroup, addNodeDialogVisible, environmentManagementDialogVisible, currentParentNode, newNodeForm, expandedKeys, treeHeight } = toRefs(state)
+const { treeData, loading, selectedEnvironment, selectedGroup, addNodeDialogVisible, environmentManagementDialogVisible, currentParentNode,  expandedKeys, treeHeight } = toRefs(state)
 
 const treeRef = ref<TreeInstance | null>(null);
 const treeContainer = ref<HTMLDivElement | null>(null);
 const addNodeFormRef = ref<FormInstance | null>(null);
 const componentId = ref<string | undefined>(undefined);
+const editEnvironmentForm = ref<Partial<Environment>>({});
+const editEnvironmentFormRef = ref<FormInstance | null>(null);
 const router = useRoute();
+
+const newNodeForm = ref<{ name: string; env_type: 'env_node' | 'env_child_group' | 'env_same_group'; }>({
+  name: '',
+  env_type: 'env_node'
+})
+
+const editEnvironmentRules: Record<string, FormItemRule[]> = {
+  name: [
+    { required: true, message: '请输入环境名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  service_addr: [
+    { required: true, message: '请输入服务地址', trigger: 'blur' },
+    { type: 'url', message: '请输入正确的URL格式', trigger: 'blur' }
+  ],
+  description: [
+    { max: 500, message: '长度不超过 500 个字符', trigger: 'blur' }
+  ]
+};
 
 // 计算属性：收集所有环境节点
 const allEnvironments = computed(() => {
@@ -165,6 +208,35 @@ const props = {
   }
 };
 
+
+const filterMethod = (value: string, data: TreeNodeData): boolean => {
+  if (!isEnvironmentTreeNode(data)) return false;
+  if (!value) return true;
+  return data.label.toLowerCase().includes(value.toLowerCase());
+};
+
+// 类型守卫 - 判断是否为环境节点
+function isEnvironment(data: any): data is Environment {
+  return data && data.is_env === true && typeof data.id === 'number' && typeof data.name === 'string';
+}
+
+// 类型守卫 - 判断是否为自定义树节点
+function isEnvironmentTreeNode(data: TreeNodeData): data is EnvironmentTreeNode {
+  return 'id' in data && 'name' in data && 'is_env' in data;
+}
+
+// 判断是否为叶子节点
+const isLeafNode = (data: EnvironmentTreeNode) => {
+  return data.is_env === true;
+};
+
+// 更新树高度
+const updateTreeHeight = () => {
+  if (treeContainer.value) {
+    treeHeight.value = treeContainer.value.clientHeight - 20;
+  }
+};
+
 const handleNodeClick = (data: TreeNodeData) => {
   if (isEnvironmentTreeNode(data) && data.is_env) {
     selectedEnvironment.value = data;
@@ -185,7 +257,7 @@ const findParentGroup = (node: EnvironmentTreeNode) => {
 
 const showAddNodeDialog = (parentNode: EnvironmentTreeNode) => {
   currentParentNode.value = parentNode;
-  newNodeForm.value = { name: '', is_env: true, type: '' };
+  newNodeForm.value = { name: '', env_type: 'env_node' };
   addNodeDialogVisible.value = true;
 };
 
@@ -214,20 +286,26 @@ const addChildNode = async () => {
   try {
     // 创建新节点
     let newNode: EnvironmentTreeNode;
-    if (newNodeForm.value.is_env) {
+    if (newNodeForm.value.env_type == 'env_node') {
       // 创建环境节点
       newNode = {
         env_group: currentParentNode.value?.name || '', 
         component_id: componentId.value || '',
-
         name: newNodeForm.value.name,
         is_env: true,
         children: [] 
       };
     } else {
+      let tmp_env_group;
+      if (newNodeForm.value.env_type == 'env_child_group') {
+        tmp_env_group = currentParentNode.value?.name
+      }
+      if (newNodeForm.value.env_type == 'env_same_group') {
+        tmp_env_group = currentParentNode.value?.env_group
+      }
       // 创建分组节点
       newNode = {
-        env_group: currentParentNode.value?.name || '', 
+        env_group: tmp_env_group || '', 
         component_id: componentId.value || '',
         name: newNodeForm.value.name,
         is_env: false,
@@ -235,12 +313,11 @@ const addChildNode = async () => {
       };
     }
 
-    // 调用API保存到后端
-    const response = await axios.post('/api/environment', newNode);
+    await axios.post('/api/environment', newNode);
+    //等待执行成功后重新获取环境数据
     if (componentId.value) {
       fetchEnv(componentId.value).catch(console.error);
     }
-
 
     addNodeDialogVisible.value = false;
     ElMessage.success(`成功添加${newNode.is_env ? '环境' : '分组'}: ${newNode.name}`);
@@ -251,16 +328,52 @@ const addChildNode = async () => {
   }
 };
 
-// 环境管理按钮点击事件
-const handleEnvironmentManagement = () => {
-  environmentManagementDialogVisible.value = true;
-};
 
 // 事件处理 - 环境相关
 const handleEditEnvironment = (environment: Environment) => {
   if (environment) {
-    ElMessage.info(`编辑环境: ${environment.name}`);
-    // 实际实现中这里应该打开环境编辑表单
+  ElMessage.info(`编辑环境: ${environment.name}`);
+  // 打开当前环境编辑表单
+  editEnvironmentForm.value = {
+        id: environment.id,
+        name: environment.name,
+        env_group: environment.env_group,
+        component_id: environment.component_id,
+        service_addr: environment.service_addr,
+        description: environment.description || '',
+        created_at: environment.created_at,
+        updated_at: environment.updated_at
+      };
+  }
+  environmentManagementDialogVisible.value = true;
+};
+
+// 添加保存编辑的方法
+const saveEnvironmentEdit = async () => {
+  if (!editEnvironmentForm.value.id) return;
+
+  if (editEnvironmentFormRef.value) {
+    try {
+      await editEnvironmentFormRef.value.validate();
+    } catch (error) {
+      console.error('表单验证失败:', error);
+      return;
+    }
+  }
+
+  try {
+    await axios.put(`/api/environment/${editEnvironmentForm.value.id}`, editEnvironmentForm.value);
+    
+    // 更新成功后刷新数据
+    if (componentId.value) {
+      await fetchEnv(componentId.value);
+    }
+    
+    environmentManagementDialogVisible.value = false;
+    ElMessage.success('环境更新成功');
+  } catch (error) {
+    console.error('更新失败:', error);
+    ElMessage.error('更新失败，请重试');
   }
 };
 
@@ -272,43 +385,27 @@ const handleDeleteEnvironment = (environment: Environment) => {
       cancelButtonText: '取消',
       type: 'warning'
     }).then(() => {
-      const latestGroup = selectedGroup.value;
-      if (latestGroup && latestGroup.children) {
-        latestGroup.children = latestGroup.children.filter((item: EnvironmentTreeNode) =>
-          isEnvironment(item) ? item.id !== environment.id : true
-        );
-      }
-      selectedEnvironment.value = null;
-      ElMessage.success('环境删除成功');
+      // 发送删除请求
+      axios.delete(`/api/environment/${environment.id}`).then(() => {
+        // 删除成功后刷新环境数据
+        if (componentId.value) {
+          fetchEnv(componentId.value).catch(console.error);
+        }
+        selectedEnvironment.value = null;
+        ElMessage.success('环境删除成功');
+      }).catch(error => {
+        console.error('删除失败:', error);
+        ElMessage.error('删除失败，请重试');
+      });
     });
   }
 };
 
-const filterMethod = (value: string, data: TreeNodeData): boolean => {
-  if (!isEnvironmentTreeNode(data)) return false;
-  if (!value) return true;
-  return data.label.toLowerCase().includes(value.toLowerCase());
-};
 
-// 类型守卫 - 判断是否为环境节点
-function isEnvironment(data: any): data is Environment {
-  return data && data.is_env === true && typeof data.id === 'number' && typeof data.name === 'string';
-}
-
-// 类型守卫 - 判断是否为自定义树节点
-function isEnvironmentTreeNode(data: TreeNodeData): data is EnvironmentTreeNode {
-  return 'id' in data && 'name' in data && 'is_env' in data;
-}
-
-// 判断是否为叶子节点
-const isLeafNode = (data: EnvironmentTreeNode) => {
-  return data.is_env === true;
-};
-
-// 更新树高度
-const updateTreeHeight = () => {
-  if (treeContainer.value) {
-    treeHeight.value = treeContainer.value.clientHeight - 20;
+const handlePingTest = (serviceAddr: string) => {
+  if (!serviceAddr) {
+    ElMessage.error('请输入服务地址');
+    return;
   }
 };
 
@@ -354,7 +451,7 @@ const generateDefaultEnvironmentTree = (): EnvironmentTreeNode[] => {
       id: 1,
       name: 'Default',
       is_env: false,
-      env_group: 'Default',
+      env_group: '',
       component_id: componentId.value || '',
       service_addr: '',
       description: '',
