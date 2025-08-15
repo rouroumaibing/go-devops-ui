@@ -21,6 +21,16 @@
           ></el-option>
         </el-select>
       </el-form-item>
+      <el-form-item label="是否并行" prop="parallel">
+        <el-switch
+          v-model="formData.parallel"
+          class="mt-2"
+          style="margin-left: 24px"
+          inline-prompt
+          :active-icon="Check"
+          :inactive-icon="Close"
+        />
+      </el-form-item>
     </el-form>
 
     <el-row :gutter="20">
@@ -51,19 +61,20 @@
       
       <!-- 右侧内容 - 占70%宽度 -->
       <el-col :span="17">
-        <el-select 
-          v-model="selectedJobType"
-          placeholder="请选择阶段类型"
-          style="margin-top: 15px;"
-        >
-          <el-option 
-            v-for="job in StageType.find(type => type.name === selectedStageType)?.job"
-            :key="job.name"
-            :label="job.value"
-            :value="job.name"
-          ></el-option>
-        </el-select>
-        
+        <el-form-item label="阶段类型">
+          <el-select 
+            v-model="selectedJobType"
+            placeholder="请选择阶段类型"
+            style="margin-top: 0px;"
+          >
+            <el-option 
+              v-for="job in StageType.find(type => type.name === selectedStageType)?.job"
+              :key="job.name"
+              :label="job.value"
+              :value="job.name"
+            ></el-option>
+          </el-select>
+        </el-form-item>
         <component 
           :is="currentStageComponent"
           v-if="selectedJobType"
@@ -86,9 +97,12 @@ import { defineProps, defineEmits, ref, watch, computed, onMounted, nextTick } f
 import { ElMessageBox, ElForm } from 'element-plus';
 import BuildStage from './stages/BuildStage.vue';
 import CheckPointStage from './stages/CheckPointStage.vue';
+import DeployStage from './stages/DeployStage.vue';
 import TestStage from './stages/TestStage.vue';
 import { StageType } from '@/types/pipeline-stagetype';
 import { Pipeline_stages } from '@/types/pipeline';
+
+import { Check, Close, Top, Bottom, Plus, Minus } from '@element-plus/icons-vue';
 
 interface StageConfig {
   stage_type: string;
@@ -102,10 +116,10 @@ interface ConfirmData {
     type: string;
     config: any;
     stage_order: number;
+    parallel: boolean;
   }>;
   group_name: string;
 }
-
 
 const selectedStageType = ref<string>('');
 const selectedJobType = ref<string>('');
@@ -114,7 +128,8 @@ const currentJob = ref<Pipeline_stages | null>(null);
 const currentJobConfig = ref<Record<string, any>>({});
 const menuData = ref<Pipeline_stages[]>([]);
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
-const formData = ref<{ group_name: string; stage_name: string }>({ group_name: '', stage_name: '' });
+const formData = ref<{ group_name: string; stage_name: string; parallel: boolean }>({ group_name: '', stage_name: '', parallel: false });
+
 const rules = ref<Record<string, any>>({
   group_name: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }],
   stage_type: [{ required: false, message: '请选择阶段类型', trigger: 'blur' }]
@@ -128,6 +143,7 @@ const props = defineProps({
   groupName: String, 
   stageType: String,
   stageName: String,
+  parallel: Boolean,
   groupId: String,
   stageConfigs: { type: Object, default: () => ({}) }
 });
@@ -138,6 +154,8 @@ const initMenuData = () => {
   const groupName = props.groupName || '新建阶段';
   const stageType = props.stageType || '';
   const stageName = props.stageName || '新建任务';
+  const parallel = props.parallel || false;
+
 
   formData.value.group_name = groupName;
   formData.value.stage_name = stageName;
@@ -146,6 +164,7 @@ const initMenuData = () => {
     group_name: groupName,
     stage_order: 0,
     stage_type: stageType,
+    parallel: parallel,
     stage_name: stageName,
     pipeline_jobs: { parameters: '', status: '' }
   }];
@@ -186,6 +205,8 @@ const currentStageComponent = computed(() => {
       return BuildStage;
     case 'checkpoint':
       return CheckPointStage;
+    case 'deploy':
+      return DeployStage;
     case 'test':
       return TestStage;
     default:
@@ -226,7 +247,8 @@ const handleConfirm = async (): Promise<void> => {
         type: stageInfo.stage_type,
         job_type: stageInfo.job_type,
         config: stageInfo.config,
-        stage_order: node.stage_order || 0
+        stage_order: node.stage_order || 0,
+        parallel: node.parallel
       };
     });
 
@@ -297,6 +319,7 @@ const addJob = (job: Pipeline_stages): void => {
       group_name: formData.value.group_name,
       stage_type: StageType.find(type => type.name === selectedStageType.value)?.value || '',
       stage_name: StageType.find(type => type.name === selectedStageType.value)?.job[0]?.value || '',
+      parallel: false,
       stage_order: menuData.value.length,
       pipeline_jobs: { parameters: '', status: '' }
     });
@@ -344,6 +367,7 @@ const deleteJob = (node: Pipeline_stages): void => {
           group_name: '新建阶段',
           stage_order: 0,
           stage_name: '新建任务',
+          parallel: false,
           pipeline_jobs: { parameters: '', status: '' }
         }];
       } else {

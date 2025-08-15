@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, defineEmits, defineProps, computed, nextTick } from 'vue';
+import { ref, reactive, defineEmits, defineProps, computed } from 'vue';
 import axios from 'axios';
 import { FormInstance, FormRules, ElMessage } from 'element-plus';
 import { Plus, Operation } from '@element-plus/icons-vue';
@@ -118,6 +118,7 @@ const NewStage = (): Pipeline_stages => {
     group_order: 0,
     stage_type: '',
     stage_name: '新建任务',
+    parallel: false,
     stage_order: 1,
     pipeline_jobs: {
       parameters: '{}',
@@ -181,7 +182,8 @@ const handleEditPielineAction = (group_id: string) => {
   }
 };
 
-const confirmEditPielineAction = (data: { stages: Array<{ name: string; type: string; config: any; stage_order: number }>, group_name: string }) => {
+const confirmEditPielineAction = (data: { stages: Array<{ name: string; type: string; config: any; stage_order: number; parallel: boolean }>, group_name: string }) => {
+
   const { stages, group_name } = data;
   const groupIndex = pipelineActionsDefault.value.findIndex(
     item => item.group_id === currentEditGroupId.value
@@ -208,6 +210,7 @@ const confirmEditPielineAction = (data: { stages: Array<{ name: string; type: st
         group_order: currentInsertIndex.value,
         stage_type: stage.type,
         stage_name: stage.name,
+        parallel: stage.parallel,
         stage_order: index + 1,
         pipeline_jobs: {
           parameters: JSON.stringify(stage.config),
@@ -251,9 +254,6 @@ const handlePielineCancel = () => {
   emit('cancel');
 };
 
-
-
-// 初始化菜单
 const pipelineActionsDefault = ref<Pipeline_stages[]>([
   {
    ...NewStage()

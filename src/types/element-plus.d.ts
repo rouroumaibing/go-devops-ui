@@ -18,6 +18,10 @@ declare module '@element-plus/icons-vue' {
   export const Delete: Component
   export const CirclePlus: Component
   export const EditPen: Component
+  export const Close: Component
+  export const Top: Component
+  export const Bottom: Component
+  export const Minus: Component
 }
 
 declare module '@element-plus/icons-vue/*' {

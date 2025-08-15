@@ -180,25 +180,6 @@ const editEnvironmentRules: Record<string, FormItemRule[]> = {
   ]
 };
 
-// 计算属性：收集所有环境节点
-const allEnvironments = computed(() => {
-  const environments: EnvironmentTreeNode[] = [];
-  
-  const collectEnvironments = (nodes: EnvironmentTreeNode[]) => {
-    nodes.forEach(node => {
-      if (node.is_env) {
-        environments.push(node);
-      }
-      if (node.children && node.children.length > 0) {
-        collectEnvironments(node.children);
-      }
-    });
-  };
-  
-  collectEnvironments(treeData.value);
-  return environments;
-});
-
 const props = {
   label: 'name',
   children: 'children',
@@ -214,11 +195,6 @@ const filterMethod = (value: string, data: TreeNodeData): boolean => {
   if (!value) return true;
   return data.label.toLowerCase().includes(value.toLowerCase());
 };
-
-// 类型守卫 - 判断是否为环境节点
-function isEnvironment(data: any): data is Environment {
-  return data && data.is_env === true && typeof data.id === 'number' && typeof data.name === 'string';
-}
 
 // 类型守卫 - 判断是否为自定义树节点
 function isEnvironmentTreeNode(data: TreeNodeData): data is EnvironmentTreeNode {
@@ -457,7 +433,7 @@ const generateDefaultEnvironmentTree = (): EnvironmentTreeNode[] => {
       description: '',
       created_at: "",
       updated_at: "",
-      children: [{}]
+      children: []
     },
   ];
 };
