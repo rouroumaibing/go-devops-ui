@@ -156,10 +156,9 @@ const initMenuData = () => {
   const stageName = props.stageName || '新建任务';
   const parallel = props.parallel || false;
 
-
   formData.value.group_name = groupName;
   formData.value.stage_name = stageName;
- 
+
   menuData.value = [{
     group_name: groupName,
     stage_order: 0,

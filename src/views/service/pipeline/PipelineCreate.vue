@@ -37,7 +37,6 @@
             @cancel="() => showEditActionDialog = false"
             @update:stage-configs="(configs) => {
               if (currentEditGroupId) {
-                // Ensure allStageConfigs.value is initialized as an object
                 allStageConfigs.value = allStageConfigs.value || {};
                 allStageConfigs.value[currentEditGroupId] = configs;
               }
@@ -78,7 +77,6 @@ const currentEditGroupId = ref<string>('');
 const pipelineForm = ref<FormInstance>();
 // 存储全部阶段配置
 const allStageConfigs = ref<Record<string, Record<string, any>>>({});
-
 
 const props = defineProps<{
   componentId: string;
@@ -288,7 +286,8 @@ const pipelineActionsDefault = ref<Pipeline_stages[]>([
   border: 1px solid var(--el-border-color);
   border-radius: var(--el-border-radius-round); /* 使用变量代替0 */
   text-align: center;
-  line-height: 40px;
+  background-color: #f5f5f5;
+  line-height: 35px;
 }
 
 .button-container {

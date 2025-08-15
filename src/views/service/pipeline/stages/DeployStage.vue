@@ -1,5 +1,5 @@
 <template>
-  <el-form ref="checkPointForm" :model="deployStageConfig" :rules="formRules" label-width="100px">
+  <el-form ref="checkPointForm" :model="deployStageConfig" :rules="formRules" label-width="100px" label-position="left">
     <el-form-item label="任务名称" formProps="deployName">
       <el-input v-model="deployStageConfig.deployName" placeholder="请输入任务名称"></el-input>
     </el-form-item>
