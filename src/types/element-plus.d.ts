@@ -22,6 +22,9 @@ declare module '@element-plus/icons-vue' {
   export const Top: Component
   export const Bottom: Component
   export const Minus: Component
+  export const CopyDocument: Component
+  export const DArrowLeft: Component
+  export const DArrowRight: Component
 }
 
 declare module '@element-plus/icons-vue/*' {

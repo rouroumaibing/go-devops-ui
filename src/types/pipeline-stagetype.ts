@@ -6,7 +6,9 @@ export const StageType = [
   { name: 'checkpoint', value: '人工卡点', job:[
     {name: "checkpoint", value: "人工卡点"}] }, 
   { name: 'deploy', value: '部署', job:[
-    {name: "deploy_env", value: "部署环境"}] }, 
+    {name: "deploy_env", value: "部署环境"},
+    {name: "upload_conf", value: "传包任务"},
+  ] }, 
   { name: 'test', value: '测试', job:[
     {name: "test_job", value: "测试任务"}] }
 ];

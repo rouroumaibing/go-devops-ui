@@ -8,10 +8,10 @@
           </div>
               <div class="start-line"></div>
             <!-- 使用v-for循环生成多个middle-container -->
-            <div v-for="group in groupedStages" :key="group.group_id" class="middle-container">
+            <div v-for="group in groupedStages" :key="group.stage_group_id" class="middle-container">
                 <div class="vertical-sopt-container">
                     <div class="middle-sopt-group">
-                        <div class="middle-text">{{ group.group_name }}</div>
+                        <div class="middle-text">{{ group.stage_group_name }}</div>
                         <div class="middle-sopt"></div>
                     </div>
                     <!-- 使用v-for循环生成多个middle-node-sopt-group -->
@@ -47,18 +47,18 @@ const pipelineStages = computed(() => props.pipelineStages);
 // 按group分组并排序的计算属性
 const groupedStages = computed(() => {
   // 1. 按group_order排序所有阶段
-  const sortedByGroup = [...pipelineStages.value].sort((a, b) =>  (a.group_order ?? 0) - (b.group_order ?? 0));
+  const sortedByGroup = [...pipelineStages.value].sort((a, b) =>  (a.stage_group_order ?? 0) - (b.stage_group_order ?? 0));
 
   // 2. 按group_id分组
   const groupsMap = sortedByGroup.reduce((acc, stage) => {
-    if (stage.group_id && !acc[stage.group_id]) {
-      acc[stage.group_id] = {
+    if (stage.stage_group_id && !acc[stage.stage_group_id]) {
+      acc[stage.stage_group_id] = {
         ...stage,
         stages: [] as Pipeline_stages[]
       };
     }
-    if (stage.group_id) {
-      acc[stage.group_id].stages.push(stage);
+    if (stage.stage_group_id) {
+      acc[stage.stage_group_id].stages.push(stage);
     }
     return acc;
   }, {} as Record<string, Pipeline_stages & { stages: Pipeline_stages[] }>);

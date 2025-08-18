@@ -5,8 +5,8 @@
     width="70%"
   >
     <el-form :model="formData" :rules="rules" ref="formRef" label-width="120px">
-      <el-form-item label="阶段名称" prop="group_name">
-        <el-input v-model="formData.group_name" placeholder="请输入阶段名称" />
+      <el-form-item label="阶段名称" prop="stage_group_name">
+        <el-input v-model="formData.stage_group_name" placeholder="请输入阶段名称" />
       </el-form-item>
       <el-form-item label="阶段类型" prop="stage_type">
         <el-select 
@@ -118,7 +118,7 @@ interface ConfirmData {
     stage_order: number;
     parallel: boolean;
   }>;
-  group_name: string;
+  stage_group_name: string;
 }
 
 const selectedStageType = ref<string>('');
@@ -128,10 +128,10 @@ const currentJob = ref<Pipeline_stages | null>(null);
 const currentJobConfig = ref<Record<string, any>>({});
 const menuData = ref<Pipeline_stages[]>([]);
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
-const formData = ref<{ group_name: string; stage_name: string; parallel: boolean }>({ group_name: '', stage_name: '', parallel: false });
+const formData = ref<{ stage_group_name: string; stage_name: string; parallel: boolean }>({ stage_group_name: '', stage_name: '', parallel: false });
 
 const rules = ref<Record<string, any>>({
-  group_name: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }],
+  stage_group_name: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }],
   stage_type: [{ required: false, message: '请选择阶段类型', trigger: 'blur' }]
 });
 
@@ -140,7 +140,7 @@ const props = defineProps({
   visible: Boolean,
   title: { type: String, default: '编辑ing' },
   stageId: Number,
-  groupName: String, 
+  stageGroupName: String, 
   stageType: String,
   stageName: String,
   parallel: Boolean,
@@ -151,16 +151,16 @@ const visible = ref<boolean>(props.visible);
 const stageConfig = ref<Record<string, StageConfig>>({...props.stageConfigs});
 
 const initMenuData = () => {
-  const groupName = props.groupName || '新建阶段';
+  const groupName = props.stageGroupName || '新建阶段';
   const stageType = props.stageType || '';
   const stageName = props.stageName || '新建任务';
   const parallel = props.parallel || false;
 
-  formData.value.group_name = groupName;
+  formData.value.stage_group_name = groupName;
   formData.value.stage_name = stageName;
 
   menuData.value = [{
-    group_name: groupName,
+    stage_group_name: groupName,
     stage_order: 0,
     stage_type: stageType,
     parallel: parallel,
@@ -235,7 +235,8 @@ const handleConfirm = async (): Promise<void> => {
     
     // 同步formData.group_name到menuData
     menuData.value.forEach(node => {
-      node.group_name = formData.value.group_name;
+      node.stage_group_name = formData.value.stage_group_name;
+
     });
 
     const stages = menuData.value.map(node => {
@@ -251,10 +252,10 @@ const handleConfirm = async (): Promise<void> => {
       };
     });
 
-    // 传递包含stages和group_name的对象
+    // 传递包含stages和stage_group_name的对象
     emits('confirm', {
       stages,
-      group_name: formData.value.group_name
+      stage_group_name: formData.value.stage_group_name
     });
     emits('update:visible', false);
     visible.value = false;
@@ -315,7 +316,7 @@ const addJob = (job: Pipeline_stages): void => {
 
   if (index !== -1) {
     menuData.value.splice(index + 1, 0, {
-      group_name: formData.value.group_name,
+      stage_group_name: formData.value.stage_group_name,
       stage_type: StageType.find(type => type.name === selectedStageType.value)?.value || '',
       stage_name: StageType.find(type => type.name === selectedStageType.value)?.job[0]?.value || '',
       parallel: false,
@@ -363,7 +364,7 @@ const deleteJob = (node: Pipeline_stages): void => {
       
       if (menuData.value.length === 0) {
         menuData.value = [{
-          group_name: '新建阶段',
+          stage_group_name: '新建阶段',
           stage_order: 0,
           stage_name: '新建任务',
           parallel: false,
@@ -420,7 +421,7 @@ onMounted(() => {
 
 // 监听groupName变化，重新初始化menuData
 watch(
-  () => props.groupName,
+  () => props.stageGroupName,
   (newActionName) => {
     if (newActionName) {
       initMenuData();

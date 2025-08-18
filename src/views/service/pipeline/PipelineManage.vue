@@ -12,14 +12,15 @@
 
         <el-row v-else class="layout-container">
           <el-col :span="6" class="left-panel">
-            <el-select v-model="selectedPipelineId" placeholder="选择流水线" style="width: 100%">
-              <el-option
-                v-for="item in pipelineList"
-                :key="item.id"
-                :label="item.name"
-                :value="item.id || ''"
-              />
-            </el-select>
+            <el-tree-v2 
+              style="max-width: 600px"
+              :data="pipelineTreeData"
+              :props="treeProps"
+              :height="300"
+              node-key="id"
+              @node-click="handlePipelineNodeClick"
+
+            />
           </el-col>
 
           <!-- 右侧任务管理区域 -->
@@ -27,6 +28,7 @@
             <el-table v-if="selectedPipeline" :data="[selectedPipeline]" border stripe>
               <el-table-column type="index" label="序号" width="80"></el-table-column>
               <el-table-column prop="name" label="流水线名称" width="180"></el-table-column>
+              <el-table-column prop="pipeline_group" label="流水线分组" width="180"></el-table-column>
               <el-table-column prop="component_id" label="所属组件" width="180"></el-table-column>
               <el-table-column prop="service_tree" label="所属服务">
                 <template #default="scope">
@@ -97,6 +99,7 @@ interface CreatePipelineFormExposed {
   pipelineForm: InstanceType<typeof ElForm> | undefined;
   validateForm: () => Promise<boolean>;
 }
+
 const state = reactive({
   pipelineDetail: null as Pipeline | null,
 });
@@ -115,6 +118,39 @@ const isCreateMode = ref(false);
 const formData = ref<PipelineFormData>({ name: '', type: '', group: '' });
 const pipelineForm = ref<InstanceType<typeof ElForm>>();
 
+// 树形结构的props配置
+const treeProps = {
+  value: 'id',
+  label: 'label',
+  children: 'children',
+};
+
+// 将pipelineList转换为树形结构数据
+const pipelineTreeData = computed(() => {
+  if (!pipelineList.value.length) return [];
+  
+  // 按pipeline_group分组
+  const groups: Record<string, Pipeline[]> = {};
+  pipelineList.value.forEach(pipeline => {
+    const groupName = pipeline.pipeline_group || '未分组';
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(pipeline);
+  });
+  
+  // 转换为树形结构
+  return Object.entries(groups).map(([groupName, pipelines]) => ({
+    id: `group-${groupName}`,
+    label: `${groupName} (${pipelines.length})`,
+    isGroup: true,
+    children: pipelines.map(pipeline => ({
+      id: pipeline.id,
+      label: pipeline.name,
+      pipeline: pipeline
+    }))
+  }));
+});
 
 const selectedPipeline = computed(() => {
   return pipelineList.value.find(p => p.id === selectedPipelineId.value);
@@ -143,6 +179,14 @@ const handleEdit = (pipeline: Pipeline) => {
 const handleRun = (pipeline: Pipeline) => {
   console.log('运行流水线:', pipeline);
   // router.push(`/pipeline/run/${pipeline.id}`);
+};
+
+// 处理节点点击事件
+const handlePipelineNodeClick = (data: any) => {
+  // 安全地检查属性是否存在
+  if (data && typeof data === 'object' && !data.isGroup && data.pipeline && data.pipeline.id) {
+    selectedPipelineId.value = data.pipeline.id;
+  }
 };
 
 const handlePipelineCreated = async () => {
@@ -186,15 +230,16 @@ const generateDefaultPipeline = (): Pipeline[] =>[
 {
   "id": "0000-0000-0123",
   "name": "流水线1",
+  "pipeline_group": "未分组",
   "component_id": "a4f44f30-43e3-4e42-8167-373e2f8da001",
   "service_tree": "app/push-server",
   "created_at": "2025-07-15 10:30",
   "updated_at": "2025-07-15 10:30",
   "pipeline_stages": [{
         "id": "000-0000-0000",
-        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
-        "group_name": "构建",
-        "group_order": 1,
+        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
+        "stage_group_name": "构建",
+        "stage_group_order": 1,
         "stage_type": "build",
         "stage_name": "构建任务",
         "parallel": false,
@@ -213,9 +258,9 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         }
     },{
         "id": "000-0000-0001",
-        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
-        "group_name": "构建",
-        "group_order": 1,
+        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
+        "stage_group_name": "构建",
+        "stage_group_order": 1,
         "stage_type": "build",
         "stage_name": "静态检查",
         "parallel": false,
@@ -234,9 +279,9 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         }
       },{
         "id": "000-0000-0003",
-        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx02",
-        "group_name": "卡点",
-        "group_order": 2,
+        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx02",
+        "stage_group_name": "卡点",
+        "stage_group_order": 2,
         "stage_type": "checkpoint",
         "stage_name": "人工卡点",
         "parallel": false,
@@ -255,9 +300,9 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         }
       },{
         "id": "000-0000-0004",
-        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
-        "group_name": "部署",
-        "group_order": 3,
+        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
+        "stage_group_name": "部署",
+        "stage_group_order": 3,
         "stage_type": "deploy",
         "stage_name": "部署环境",
         "parallel": false,
@@ -276,9 +321,9 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         }
       },{
         "id": "000-0000-0006",
-        "group_id": "xxxx-xxx-xxxx-xxxx-xxxxx04",
-        "group_name": "测试",
-        "group_order": 4,
+        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx04",
+        "stage_group_name": "测试",
+        "stage_group_order": 4,
         "stage_type": "test",
         "stage_name": "测试任务",
         "parallel": false,

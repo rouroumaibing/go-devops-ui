@@ -1,6 +1,7 @@
 export interface Pipeline {
   id?: string;
   name: string;
+  pipeline_group?: string;
   component_id: string;
   service_tree: string;
   created_at?: string;
@@ -10,9 +11,9 @@ export interface Pipeline {
 
 export interface Pipeline_stages {
   id?: string;
-  group_id?: string;
-  group_name: string;
-  group_order?: number;
+  stage_group_id?: string;
+  stage_group_name: string;
+  stage_group_order?: number;
   stage_type?: string;
   stage_name?: string;
   parallel: boolean;
