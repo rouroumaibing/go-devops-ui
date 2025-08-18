@@ -1,7 +1,7 @@
 <template>
   <el-form ref="checkPointForm" :model="deployStageConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="deployName">
-      <el-input v-model="deployStageConfig.deployName" placeholder="请输入任务名称"></el-input>
+    <el-form-item label="任务名称" formProps="name">
+      <el-input v-model="deployStageConfig.name" placeholder="请输入任务名称"></el-input>
     </el-form-item>
   </el-form>
   <el-tree-v2
@@ -40,14 +40,14 @@ const treeProps = {
 
 const emits = defineEmits<{
   (e: 'update:config', config: {
-    deployName: string;
+    name: string;
   }): void
 }>();
 
 const deployStageConfig = ref<{
-  deployName: string;
+  name: string;
 }>({
-  deployName: formProps.config?.deployName || '',
+  name: formProps.config?.name || '',
 });
 
 const formRules = ref<FormRules>({
@@ -92,7 +92,7 @@ onMounted(() => {
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     deployStageConfig.value = {
-      deployName: newConfig.deployName || '',
+      name: newConfig.name || '',
     };
   }
 }, { deep: true });

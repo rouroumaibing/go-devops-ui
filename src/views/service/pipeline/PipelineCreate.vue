@@ -10,30 +10,28 @@
         </el-form-item>
             <div class="button-container">
               <el-button :icon="Plus" circle @click="handleAddPielineAction(0) "/>
-
-              <template v-for="(action, index) in groupList" :key="action.stage_group_id">
-
-                <div size="small" round text
-                  class="radius"
-                  :style="{
-                  borderRadius: 'var(--el-border-radius-round)'
-                  }"
-                >
-                  {{ action.stage_group_name }}
-                  <el-button :icon="Edit" @click="handleEditPielineAction(action.stage_group_id)"/>
-                  <el-dropdown>
-                    <el-button :icon="Operation" />
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item :icon="CopyDocument" @click="handleCopyPielineAction(action.stage_group_id)" >复制</el-dropdown-item>
-                        <el-dropdown-item :icon="Delete" @click="handleDeletePielineAction(action.stage_group_id)" >删除</el-dropdown-item>
-                        <el-dropdown-item :icon="DArrowLeft" @click="handleMoveForwardPielineAction(action.stage_group_id)" >向前移动</el-dropdown-item>
-                        <el-dropdown-item :icon="DArrowRight" @click="handleMoveBackwardPielineAction(action.stage_group_id)" >向后移动</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </template>
+                <template v-for="(action, index) in groupList" :key="action.stage_group_id">
+                  <div class="radius" :style="{borderRadius: 'var(--el-border-radius-small)'}">
+                    <div class="action_text">
+                        {{ action.stage_group_name }} 
+                    </div>
+                    <div class="action_button">
+                        <el-button :icon="Edit" @click="handleEditPielineAction(action.stage_group_id)" size="small"/> 
+                          <el-dropdown size="small">
+                            <el-button :icon="Operation" size="small" /> 
+                            <template #dropdown>
+                              <el-dropdown-menu>
+                                <el-dropdown-item :icon="CopyDocument" @click="handleCopyPielineAction(action.stage_group_id)" >复制</el-dropdown-item>
+                                <el-dropdown-item :icon="Delete" @click="handleDeletePielineAction(action.stage_group_id)" >删除</el-dropdown-item>
+                                <el-dropdown-item :icon="DArrowLeft" @click="handleMoveForwardPielineAction(action.stage_group_id)" >向前移动</el-dropdown-item>
+                                <el-dropdown-item :icon="DArrowRight" @click="handleMoveBackwardPielineAction(action.stage_group_id)" >向后移动</el-dropdown-item>
+                              </el-dropdown-menu>
+                            </template>
+                          </el-dropdown>
+                        </div>
+                    </div>
+                    <el-button :icon="Plus" circle @click="handleAddPielineAction(index + 1)"/> 
+                </template>
             </div>
         </el-form>
           <EditStage
@@ -129,7 +127,7 @@ const generateTempId = () => {
 const NewStage = (): Pipeline_stages => {
   return {
     stage_group_id: generateTempId(),
-    stage_group_name: '新建阶段',
+    stage_group_name: '新建阶段-' + Math.floor(Math.random() * 100000),
     stage_group_order: 0,
     stage_type: '',
     stage_name: '新建任务',
@@ -476,17 +474,38 @@ const pipelineActionsDefault = ref<Pipeline_stages[]>([
 .radius {
   height: 40px;
   width: 220px;
-  border: 1px solid var(--el-border-color);
-  border-radius: var(--el-border-radius-round); /* 使用变量代替0 */
-  text-align: center;
+  border: 0px solid var(--el-border-color);
+  text-align: left;
   background-color: #f5f5f5;
-  line-height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.action_text {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  font-weight: bold;
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px;
+}
+
+.action_button {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  gap: 5px;
+  padding-right: 6px;
 }
 
 .button-container {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex-wrap: wrap;
 }
 </style>

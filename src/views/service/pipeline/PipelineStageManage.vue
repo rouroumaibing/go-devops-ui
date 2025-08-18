@@ -151,16 +151,16 @@ const visible = ref<boolean>(props.visible);
 const stageConfig = ref<Record<string, StageConfig>>({...props.stageConfigs});
 
 const initMenuData = () => {
-  const groupName = props.stageGroupName || '新建阶段';
+  const stageGroupName = props.stageGroupName || '新建阶段';
   const stageType = props.stageType || '';
   const stageName = props.stageName || '新建任务';
   const parallel = props.parallel || false;
 
-  formData.value.stage_group_name = groupName;
+  formData.value.stage_group_name = stageGroupName;
   formData.value.stage_name = stageName;
 
   menuData.value = [{
-    stage_group_name: groupName,
+    stage_group_name: stageGroupName,
     stage_order: 0,
     stage_type: stageType,
     parallel: parallel,
@@ -259,6 +259,7 @@ const handleConfirm = async (): Promise<void> => {
     });
     emits('update:visible', false);
     visible.value = false;
+
   } catch (error) {
     // 表单验证失败，不执行后续操作
     console.log('表单验证失败:', error);
@@ -270,6 +271,7 @@ const handleCancel = (): void => {
   emits('cancel');
   visible.value = false;
 };
+
 
 // 方法 - 点击任务
 const handleJobClick = (data: any, node: any, e: MouseEvent): void => {
@@ -455,7 +457,6 @@ watch(visible, (val) => {
 
 // 监听 - 阶段类型变化，更新菜单数据
 watch(selectedStageType, (newVal) => {
-
   if (newVal && currentJob.value) {
     // 设置默认作业类型、默认作业名称
     currentJob.value.stage_type = StageType.find(type => type.name === newVal)?.value;
@@ -481,6 +482,18 @@ watch(selectedJobType, (newVal) => {
     }
   }
 });
+
+watch(
+  () => currentJobConfig.value,
+  (newConfig, oldConfig) => {
+    if (newConfig?.name !== oldConfig?.name && currentJob.value) {
+      currentJob.value.stage_name = newConfig.name;
+      // 触发菜单数据更新
+      menuData.value = [...menuData.value];
+    }
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>

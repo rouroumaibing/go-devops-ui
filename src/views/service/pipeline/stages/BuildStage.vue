@@ -1,7 +1,7 @@
 <template>
   <el-form ref="buildForm" :model="buildConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="buildName">
-      <el-input v-model="buildConfig.buildName" placeholder="请输入任务名称"></el-input>
+    <el-form-item label="任务名称" formProps="name">
+      <el-input v-model="buildConfig.name" placeholder="请输入任务名称"></el-input>
     </el-form-item>
   </el-form>
 </template>
@@ -20,14 +20,14 @@ const formProps = defineProps({
 
 // 定义组件事件，用于向父组件更新配置
 const emits = defineEmits<{
-  (e: 'update:config', config: { buildName: string; }): void
+  (e: 'update:config', config: { name: string; }): void
 }>();
 
 // 创建响应式变量存储构建配置，初始值从props中获取或使用空字符串
 const buildConfig = ref<{
-  buildName: string;
+  name: string;
 }>({
-  buildName: formProps.config?.buildName || '',
+  name: formProps.config?.name || '',
 });
 
 const formRules = reactive<FormRules>({
@@ -38,7 +38,7 @@ const formRules = reactive<FormRules>({
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     buildConfig.value = {
-      buildName: newConfig.buildName || ''
+      name: newConfig.name || ''
     };
   }
 }, { deep: true });

@@ -48,7 +48,7 @@
         </el-row>
 
         <div class="pipeline-run-container">
-          <PipelineRun 
+          <PipelineMap 
             v-if="selectedPipelineId && pipelineList.length > 0"
             :pipeline-stages="pipelineList.find(p => p.id === selectedPipelineId)?.pipeline_stages ?? []"
           />
@@ -82,7 +82,7 @@ import { ElMessage, ElForm } from 'element-plus';
 import { useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
-import PipelineRun from './PipelineMap.vue';
+import PipelineMap from './PipelineMap.vue';
 
 import type { Pipeline } from '@/types/pipeline';
 
@@ -168,7 +168,6 @@ const enterCreateMode = () => {
   if (pipelineForm.value) {
     pipelineForm.value.clearValidate();
   }
-  
 };
 
 const handleEdit = (pipeline: Pipeline) => {

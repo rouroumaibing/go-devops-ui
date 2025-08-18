@@ -1,7 +1,7 @@
 <template>
   <el-form ref="checkPointForm" :model="checkPointConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="checkPointName">
-      <el-input v-model="checkPointConfig.checkPointName" placeholder="请输入任务名称"></el-input>
+    <el-form-item label="任务名称" formProps="name">
+      <el-input v-model="checkPointConfig.name" placeholder="请输入任务名称"></el-input>
     </el-form-item>
     <el-form-item label="审批人" formProps="approver">
       <el-input v-model="checkPointConfig.approver" placeholder="输入审批人用户名，多个用逗号分隔"></el-input>
@@ -30,18 +30,18 @@ const formProps = defineProps({
 
 const emits = defineEmits<{
   (e: 'update:config', config: {
-    checkPointName: string;
+    name: string;
     approver: string;
     timeoutHours: number;
   }): void
 }>();
 
 const checkPointConfig = ref<{
-  checkPointName: string;
+  name: string;
   approver: string;
   timeoutHours: number;
 }>({
-  checkPointName: formProps.config?.checkPointName || '',
+  name: formProps.config?.name || '',
   approver: formProps.config?.approver || '',
   timeoutHours: formProps.config?.timeoutHours || 24
 });
@@ -54,7 +54,7 @@ const formRules = ref<FormRules>({
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     checkPointConfig.value = {
-      checkPointName: newConfig.checkPointName || '',
+      name: newConfig.name || '',
       approver: newConfig.approver || '',
       timeoutHours: newConfig.timeoutHours || 24
     };

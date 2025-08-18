@@ -1,7 +1,7 @@
 <template>
   <el-form ref="testForm" :model="testConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="testName">
-      <el-input v-model="testConfig.testName" placeholder="请输入任务名称"></el-input>
+    <el-form-item label="任务名称" formProps="name">
+      <el-input v-model="testConfig.name" placeholder="请输入任务名称"></el-input>
     </el-form-item>
   </el-form>
 </template>
@@ -19,14 +19,14 @@ const formProps = defineProps({
 
 const emits = defineEmits<{
   (e: 'update:config', config: {
-    testName: string;
+    name: string;
   }): void
 }>();
 
 const testConfig = ref<{
-  testName: string;
+  name: string;
 }>({
-  testName: formProps.config?.testName || '',
+  name: formProps.config?.name || '',
 });
 
 const formRules = ref<FormRules>({
@@ -38,7 +38,7 @@ const formRules = ref<FormRules>({
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     testConfig.value = {
-      testName: newConfig.testName || ''
+      name: newConfig.name || ''
     };
   }
 }, { deep: true });
