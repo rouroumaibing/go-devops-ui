@@ -1,8 +1,5 @@
 <template>
-  <el-form ref="checkPointForm" :model="checkPointConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="name">
-      <el-input v-model="checkPointConfig.name" placeholder="请输入任务名称"></el-input>
-    </el-form-item>
+  <el-form ref="checkPointForm" :model="checkPointConfig" label-width="100px" label-position="left">
     <el-form-item label="审批人" formProps="approver">
       <el-input v-model="checkPointConfig.approver" placeholder="输入审批人用户名，多个用逗号分隔"></el-input>
     </el-form-item>
@@ -19,7 +16,6 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch } from 'vue';
-import type { FormRules } from 'element-plus';
 
 const formProps = defineProps({
   config: {
@@ -30,31 +26,23 @@ const formProps = defineProps({
 
 const emits = defineEmits<{
   (e: 'update:config', config: {
-    name: string;
     approver: string;
     timeoutHours: number;
   }): void
 }>();
 
 const checkPointConfig = ref<{
-  name: string;
   approver: string;
   timeoutHours: number;
 }>({
-  name: formProps.config?.name || '',
   approver: formProps.config?.approver || '',
   timeoutHours: formProps.config?.timeoutHours || 24
-});
-
-const formRules = ref<FormRules>({
-  name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
 });
 
 // 监听props.config变化，确保外部更新时能同步到内部状态
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     checkPointConfig.value = {
-      name: newConfig.name || '',
       approver: newConfig.approver || '',
       timeoutHours: newConfig.timeoutHours || 24
     };

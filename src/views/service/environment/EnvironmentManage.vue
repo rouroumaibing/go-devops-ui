@@ -401,6 +401,8 @@ const fetchEnv = async (componentId: string) => {
   } finally {
     loading.value = false;
   }
+  updateTreeHeight();
+  window.addEventListener('resize', updateTreeHeight);
 };
 
 
@@ -411,8 +413,6 @@ onMounted(() => {
   if (componentId.value) {
     fetchEnv(componentId.value);
   }
-  updateTreeHeight();
-  window.addEventListener('resize', updateTreeHeight);
 });
 
 // 页面卸载前清理

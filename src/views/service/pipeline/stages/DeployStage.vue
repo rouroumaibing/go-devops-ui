@@ -1,7 +1,12 @@
 <template>
-  <el-form ref="checkPointForm" :model="deployStageConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="name">
-      <el-input v-model="deployStageConfig.name" placeholder="请输入任务名称"></el-input>
+  <el-form ref="checkPointForm" :model="deployStageConfig"  label-width="100px" label-position="left">
+    <el-form-item label="执行超时时间" formProps="timeoutHours">
+      <el-input-number
+        v-model="deployStageConfig.timeoutHours"
+        :min="1"
+        :max="72"
+        label="小时"
+      ></el-input-number>
     </el-form-item>
   </el-form>
   <el-tree-v2
@@ -19,7 +24,7 @@
 import axios from 'axios';
 import { ref, onMounted, defineEmits, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElMessage, FormRules } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { Environment } from '@/types/environment-manage';
 
 interface EnvironmentTreeNode extends Environment {
@@ -38,21 +43,6 @@ const treeProps = {
   children: 'children',
 };
 
-const emits = defineEmits<{
-  (e: 'update:config', config: {
-    name: string;
-  }): void
-}>();
-
-const deployStageConfig = ref<{
-  name: string;
-}>({
-  name: formProps.config?.name || '',
-});
-
-const formRules = ref<FormRules>({
-  name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-});
 // 定义响应式变量
 const treeData = ref<EnvironmentTreeNode[]>([]);
 const loading = ref(false);
@@ -88,14 +78,27 @@ onMounted(() => {
   }
 });
 
+// 定义组件事件，用于向父组件更新配置
+const emits = defineEmits<{
+  (e: 'update:config', config: { timeoutHours: number; }): void
+}>();
+
+// 创建响应式变量存储构建配置，初始值从props中获取或使用空字符串
+const deployStageConfig = ref<{
+  timeoutHours: number;
+}>({
+  timeoutHours: formProps.config?.timeoutHours || 24
+});
+
 // 监听props.config变化，确保外部更新时能同步到内部状态
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     deployStageConfig.value = {
-      name: newConfig.name || '',
+      timeoutHours: newConfig.timeoutHours || 24
     };
   }
 }, { deep: true });
+
 
 // 监听内部配置变化并通知父组件
 watch(deployStageConfig, (newVal) => {

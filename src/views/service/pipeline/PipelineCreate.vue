@@ -34,7 +34,7 @@
                 </template>
             </div>
         </el-form>
-          <EditStage
+          <PipelineStageManage
             :key="currentEditGroupId"
             :visible="showEditActionDialog"
             :title="editActionDialogTitle"
@@ -53,7 +53,7 @@
                 allStageConfigs.value[currentEditGroupId] = configs;
               }
             }"
-          ></EditStage>
+          ></PipelineStageManage>
         <div class="form-actions">
           <el-button @click="handlePielineCancel">取消</el-button>
           <el-button type="primary" @click="handlePielineSubmit">提交</el-button>
@@ -74,7 +74,7 @@ import axios from 'axios';
 import { FormInstance, FormRules, ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Operation, Edit, CopyDocument, Delete, DArrowLeft, DArrowRight } from '@element-plus/icons-vue';
 
-import EditStage from './PipelineStageManage.vue';
+import PipelineStageManage from './PipelineStageManage.vue';
 import PipelineRun from './PipelineMap.vue';
 import { Pipeline, Pipeline_stages } from '@/types/pipeline';
 
@@ -198,7 +198,7 @@ const handleEditPielineAction = (stage_group_id: string) => {
   }
 };
 
-const confirmEditPielineAction = (data: { stages: Array<{ name: string; type: string; config: any; stage_order: number; parallel: boolean }>, stage_group_name: string }) => {
+const confirmEditPielineAction = (data: { stages: Array<{ stage_name: string; stage_type: string; config: any; stage_order: number; parallel: boolean }>, stage_group_name: string }) => {
 
   const { stages, stage_group_name } = data;
   const groupIndex = pipelineActionsDefault.value.findIndex(
@@ -226,8 +226,8 @@ const confirmEditPielineAction = (data: { stages: Array<{ name: string; type: st
         stage_group_id: currentEditGroupId.value,
         stage_group_name: stage_group_name,
         stage_group_order: currentInsertIndex.value,
-        stage_type: stage.type,
-        stage_name: stage.name,
+        stage_type: stage.stage_type,
+        stage_name: stage.stage_name,
         parallel: stage.parallel,
         stage_order: index + 1,
         pipeline_jobs: {
@@ -430,7 +430,6 @@ const handlePielineSubmit = async () => {
     if (valid) {
       // 发送创建流水线的POST请求
       const response = await axios.post('/api/pipeline', resultTableData);
-      ElMessage.success('流水线创建成功');
       emit('success', response.data);
       emit('cancel');
     }

@@ -1,14 +1,18 @@
 <template>
-  <el-form ref="testForm" :model="testConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="name">
-      <el-input v-model="testConfig.name" placeholder="请输入任务名称"></el-input>
+  <el-form ref="testForm" :model="testConfig" label-width="100px" label-position="left">
+    <el-form-item label="执行超时时间" formProps="timeoutHours">
+      <el-input-number
+        v-model="testConfig.timeoutHours"
+        :min="1"
+        :max="72"
+        label="小时"
+      ></el-input-number>
     </el-form-item>
   </el-form>
 </template>
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch } from 'vue';
-import type { FormRules } from 'element-plus';
 
 const formProps = defineProps({
   config: {
@@ -19,26 +23,21 @@ const formProps = defineProps({
 
 const emits = defineEmits<{
   (e: 'update:config', config: {
-    name: string;
+    timeoutHours: number;
   }): void
 }>();
 
 const testConfig = ref<{
-  name: string;
+  timeoutHours: number;
 }>({
-  name: formProps.config?.name || '',
+  timeoutHours: formProps.config?.timeoutHours || 24,
 });
-
-const formRules = ref<FormRules>({
-  name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
-});
-
 
 // 监听props.config变化，确保外部更新时能同步到内部状态
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     testConfig.value = {
-      name: newConfig.name || ''
+      timeoutHours: newConfig.timeoutHours || 24
     };
   }
 }, { deep: true });

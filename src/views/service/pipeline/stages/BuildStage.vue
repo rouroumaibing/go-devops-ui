@@ -1,14 +1,18 @@
 <template>
-  <el-form ref="buildForm" :model="buildConfig" :rules="formRules" label-width="100px" label-position="left">
-    <el-form-item label="任务名称" formProps="name">
-      <el-input v-model="buildConfig.name" placeholder="请输入任务名称"></el-input>
+  <el-form ref="buildForm" :model="buildConfig" label-width="100px" label-position="left">
+    <el-form-item label="执行超时时间" formProps="timeoutHours">
+      <el-input-number
+        v-model="buildConfig.timeoutHours"
+        :min="1"
+        :max="72"
+        label="小时"
+      ></el-input-number>
     </el-form-item>
   </el-form>
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits, ref, watch, reactive } from 'vue';
-import type { FormRules } from 'element-plus';
+import { defineProps, defineEmits, ref, watch } from 'vue';
 
 // 定义组件属性，接收配置对象作为参数，默认值为空对象
 const formProps = defineProps({
@@ -20,25 +24,21 @@ const formProps = defineProps({
 
 // 定义组件事件，用于向父组件更新配置
 const emits = defineEmits<{
-  (e: 'update:config', config: { name: string; }): void
+  (e: 'update:config', config: { timeoutHours: number; }): void
 }>();
 
 // 创建响应式变量存储构建配置，初始值从props中获取或使用空字符串
 const buildConfig = ref<{
-  name: string;
+  timeoutHours: number;
 }>({
-  name: formProps.config?.name || '',
-});
-
-const formRules = reactive<FormRules>({
-  name: [{ required: true, message: '请输入流水线名称', trigger: 'blur' }],
+  timeoutHours: formProps.config?.timeoutHours || 24
 });
 
 // 监听props.config变化，确保外部更新时能同步到内部状态
 watch(() => formProps.config, (newConfig) => {
   if (newConfig) {
     buildConfig.value = {
-      name: newConfig.name || ''
+      timeoutHours: newConfig.timeoutHours || 24
     };
   }
 }, { deep: true });

@@ -40,7 +40,7 @@
           style="height: 400px; border: 2px solid #eee"
           :data="menuData"
           @node-click="handleJobClick"
-          v-model:selectedKeys="selectedKeys"
+          v-model:selectedJobKeys="selectedJobKeys"
           node-key="stage_order"
         >
           <template #default="{ data }">
@@ -61,10 +61,13 @@
       
       <!-- 右侧内容 - 占70%宽度 -->
       <el-col :span="17">
-        <el-form-item label="阶段类型">
+        <el-form-item label="任务名称" formProps="stage_name">
+          <el-input v-model="formData.stage_name" placeholder="请输入任务名称"></el-input>
+        </el-form-item>
+        <el-form-item label="任务类型">
           <el-select 
             v-model="selectedJobType"
-            placeholder="请选择阶段类型"
+            placeholder="请选择任务类型"
             style="margin-top: 0px;"
           >
             <el-option 
@@ -112,8 +115,8 @@ interface StageConfig {
 
 interface ConfirmData {
   stages: Array<{
-    name: string;
-    type: string;
+    stage_name: string;
+    stage_type: string;
     config: any;
     stage_order: number;
     parallel: boolean;
@@ -123,7 +126,7 @@ interface ConfirmData {
 
 const selectedStageType = ref<string>('');
 const selectedJobType = ref<string>('');
-const selectedKeys = ref<string[]>([]);
+const selectedJobKeys = ref<string[]>([]);
 const currentJob = ref<Pipeline_stages | null>(null);
 const currentJobConfig = ref<Record<string, any>>({});
 const menuData = ref<Pipeline_stages[]>([]);
@@ -131,8 +134,10 @@ const formRef = ref<InstanceType<typeof ElForm> | null>(null);
 const formData = ref<{ stage_group_name: string; stage_name: string; parallel: boolean }>({ stage_group_name: '', stage_name: '', parallel: false });
 
 const rules = ref<Record<string, any>>({
+  stage_name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
   stage_group_name: [{ required: true, message: '请输入阶段名称', trigger: 'blur' }],
   stage_type: [{ required: false, message: '请选择阶段类型', trigger: 'blur' }]
+
 });
 
 // Props和Emits
@@ -155,6 +160,7 @@ const initMenuData = () => {
   const stageType = props.stageType || '';
   const stageName = props.stageName || '新建任务';
   const parallel = props.parallel || false;
+  const stageConfigs = props.stageConfigs || {};
 
   formData.value.stage_group_name = stageGroupName;
   formData.value.stage_name = stageName;
@@ -169,25 +175,12 @@ const initMenuData = () => {
   }];
 
   const defaultStage = menuData.value[0];
-  if (defaultStage) {
-    const stageType = StageType.find(type => type.value === defaultStage.stage_type)?.name || '';
-    if (stageType) {
-      selectedStageType.value = stageType;
-      selectedJobType.value = StageType
-        .flatMap(type => type.job || [])
-        .find(job => job.value === defaultStage.stage_name)
-        ?.name || '';
-    }else{
-      selectedStageType.value = '';
-      selectedJobType.value = '';
-    }
-
-    // 自动选择第一个节点
-    currentJob.value = defaultStage;
-    selectedKeys.value = [defaultStage.stage_order?.toString() || ''];
-    const stageOrder = defaultStage.stage_order?.toString() || '';
-    currentJobConfig.value = stageConfig.value[stageOrder]?.config || {};
-  }
+  currentJob.value = defaultStage;
+  selectedStageType.value = defaultStage.stage_type || '';
+  selectedJobType.value = defaultStage.stage_name || '新建任务';
+  selectedJobKeys.value = [defaultStage.stage_order?.toString() || ''];
+  const stageOrder = defaultStage.stage_order?.toString() || '';
+  currentJobConfig.value = stageConfig.value[stageOrder]?.config || {};
 };
 
 const emits = defineEmits<{
@@ -197,16 +190,34 @@ const emits = defineEmits<{
   (e: 'update:stage-configs', configs: Record<string, StageConfig>): void;
 }>();
 
+const currentJobsClean = () => {
+  // 只在切换阶段类型时重置job_type，而不是每次都重置
+  if (currentJob.value && selectedJobType.value) {
+    // 保留当前选中的job_type
+    const currentJobType = selectedJobType.value;
+    nextTick(() => {
+      selectedJobType.value = currentJobType;
+    });
+  } else {
+    selectedJobType.value = '';
+  }
+  menuData.value = [...menuData.value];
+};
+
 // 计算属性 - 动态切换组件
 const currentStageComponent = computed(() => {
   switch(selectedStageType.value) {
     case 'build':
+      currentJobsClean()
       return BuildStage;
     case 'checkpoint':
+      currentJobsClean()
       return CheckPointStage;
     case 'deploy':
+      currentJobsClean()
       return DeployStage;
     case 'test':
+      currentJobsClean()
       return TestStage;
     default:
       return null;
@@ -219,7 +230,7 @@ const handleJobConfigUpdate = (config: Record<string, any>): void => {
     const stageOrder = currentJob.value.stage_order?.toString() || '';
     stageConfig.value[stageOrder] = {
       stage_type: currentJob.value.stage_type || '',
-      job_type: currentJob.value.stage_name || '',
+      job_type: selectedJobType.value || '',
       config
     };
     emits('update:stage-configs', stageConfig.value);
@@ -241,10 +252,11 @@ const handleConfirm = async (): Promise<void> => {
 
     const stages = menuData.value.map(node => {
       const stageOrder = node.stage_order?.toString() || '';
-      const stageInfo = stageConfig.value[stageOrder] || { stage_type: '', job_type: '', config: {} };
+      const stageInfo = stageConfig.value[stageOrder] || { stage_name: '', stage_type: '', job_type: '', config: {},stage_order: 0, parallel: false};
+
       return {
-        name: node.stage_name || '',
-        type: stageInfo.stage_type,
+        stage_name: node.stage_name || '',
+        stage_type: stageInfo.stage_type,
         job_type: stageInfo.job_type,
         config: stageInfo.config,
         stage_order: node.stage_order || 0,
@@ -276,18 +288,12 @@ const handleCancel = (): void => {
 // 方法 - 点击任务
 const handleJobClick = (data: any, node: any, e: MouseEvent): void => {
   const stageJob = data as Pipeline_stages;
-  selectedKeys.value = [stageJob.stage_order?.toString() || ''];
+  selectedJobKeys.value = [stageJob.stage_order?.toString() || ''];
   currentJob.value = stageJob;
- 
-  selectedKeys.value = [stageJob.stage_order?.toString() || ''];
-  selectedStageType.value = StageType.find(type => type.value === stageJob.stage_type)?.name || '';
-  selectedJobType.value = StageType
-    .flatMap(type => type.job || [])
-    .find(job => job.value === stageJob.stage_name)
-    ?.name || '';
-
   nextTick(() => {
-    currentJobConfig.value = { ...(stageConfig.value[currentJob.value?.stage_order?.toString() ?? '']?.config || {}) };
+    const stageOrder = currentJob.value?.stage_order?.toString() ?? '';
+    currentJobConfig.value = { ...(stageConfig.value[stageOrder]?.config || {}) };
+    selectedJobType.value = stageConfig.value[stageOrder]?.job_type || '';
   });
 };
 
@@ -319,8 +325,8 @@ const addJob = (job: Pipeline_stages): void => {
   if (index !== -1) {
     menuData.value.splice(index + 1, 0, {
       stage_group_name: formData.value.stage_group_name,
-      stage_type: StageType.find(type => type.name === selectedStageType.value)?.value || '',
-      stage_name: StageType.find(type => type.name === selectedStageType.value)?.job[0]?.value || '',
+      stage_type: '',
+      stage_name: '新建任务',
       parallel: false,
       stage_order: menuData.value.length,
       pipeline_jobs: { parameters: '', status: '' }
@@ -331,21 +337,17 @@ const addJob = (job: Pipeline_stages): void => {
     
     const newNode = menuData.value[index + 1];
     currentJob.value = newNode;
-    selectedKeys.value = [newNode.stage_order?.toString() || ''];
-    selectedStageType.value = StageType.find(type => type.value === newNode.stage_type)?.name || '';
-    selectedJobType.value = StageType
-      .flatMap(type => type.job || [])
-      .find(job => job.value === newNode.stage_name)
-      ?.name || '';
+    selectedJobKeys.value = [newNode.stage_order?.toString() || ''];
 
     const newStageOrder = newNode.stage_order?.toString() || '';
     stageConfig.value[newStageOrder] = {
       stage_type: newNode.stage_type || '',
-      job_type: newNode.stage_name || '',
+      job_type: '',
       config: {}
     };
     
     currentJobConfig.value = stageConfig.value[newStageOrder].config;
+    selectedJobType.value = '';
   }
 };
 
@@ -378,12 +380,12 @@ const deleteJob = (node: Pipeline_stages): void => {
       
       if (currentJob.value?.stage_order === node.stage_order) {
         currentJob.value = null;
-        selectedKeys.value = [];
+        selectedJobKeys.value = [];
       }
       
       if (menuData.value.length > 0) {
         currentJob.value = menuData.value[0];
-        selectedKeys.value = [menuData.value[0].stage_order?.toString() || ''];
+        selectedJobKeys.value = [menuData.value[0].stage_order?.toString() || ''];
       }
       
       menuData.value = [...menuData.value];
@@ -421,7 +423,7 @@ onMounted(() => {
   initMenuData();
 });
 
-// 监听groupName变化，重新初始化menuData
+// 监听stageGroupName变化，重新初始化menuData
 watch(
   () => props.stageGroupName,
   (newActionName) => {
@@ -455,45 +457,17 @@ watch(visible, (val) => {
   emits('update:visible', val);
 });
 
-// 监听 - 阶段类型变化，更新菜单数据
-watch(selectedStageType, (newVal) => {
-  if (newVal && currentJob.value) {
-    // 设置默认作业类型、默认作业名称
-    currentJob.value.stage_type = StageType.find(type => type.name === newVal)?.value;
-    currentJob.value.stage_name = StageType.find(type => type.name === newVal)?.job?.[0]?.value;
-    selectedJobType.value = StageType.find(type => type.name === newVal)?.job?.[0]?.name || '';
-
-    menuData.value = [...menuData.value];
-  }
-});
-
-// 监听 - 作业类型变化，更新菜单数据
-watch(selectedJobType, (newVal) => {
-  if (newVal && currentJob.value) {
-    // 找到对应的作业类型
-    const stageTypeItem = StageType.find(type => type.job?.some(job => job.name === newVal));
-     if (stageTypeItem) {
-      // 更新当前节点的阶段名称
-      currentJob.value.stage_name = stageTypeItem.job?.find(job => job.name === newVal)?.value 
-      // 配置也需要切换到新的配置
-      currentJobConfig.value = stageConfig.value?.[currentJob.value?.stage_order?.toString() || '']?.config || {};
-      // 触发菜单数据更新
-      menuData.value = [...menuData.value];
-    }
-  }
-});
-
+// stage_name 变化时，更新当前任务的 stage_name
 watch(
-  () => currentJobConfig.value,
-  (newConfig, oldConfig) => {
-    if (newConfig?.name !== oldConfig?.name && currentJob.value) {
-      currentJob.value.stage_name = newConfig.name;
-      // 触发菜单数据更新
-      menuData.value = [...menuData.value];
+  () => formData.value.stage_name,
+  (newStageType) => {
+    if (newStageType && currentJob.value) {
+      currentJob.value.stage_name = newStageType || '';
     }
-  },
-  { deep: true }
+  }
 );
+
+
 </script>
 
 <style scoped>
