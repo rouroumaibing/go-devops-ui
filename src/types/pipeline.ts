@@ -18,6 +18,7 @@ export interface Pipeline_stages {
   stage_name?: string;
   parallel: boolean;
   stage_order?: number;
+  job_type?: string;
   pipeline_id?: string;
   created_at?: string;
   updated_at?: string;

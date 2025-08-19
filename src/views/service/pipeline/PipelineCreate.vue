@@ -40,16 +40,14 @@
             :title="editActionDialogTitle"
             :stage-group-name="editGroupName"
             :stage-type="currentEditStageType"
-            :stage-name="currentEditStageName"
-            :group-id="currentEditGroupId"
+            :stage-group-id="currentEditGroupId"
             :stage-configs="(allStageConfigs.value || {})[currentEditGroupId || ''] || {}"
             @update:visible="(value: boolean) => showEditActionDialog = value"
             @confirm="confirmEditPielineAction"
-
             @cancel="() => showEditActionDialog = false"
             @update:stage-configs="(configs) => {
               if (currentEditGroupId) {
-                allStageConfigs.value = allStageConfigs.value || {};
+                allStageConfigs.value = { ...allStageConfigs.value };
                 allStageConfigs.value[currentEditGroupId] = configs;
               }
             }"
@@ -133,6 +131,7 @@ const NewStage = (): Pipeline_stages => {
     stage_name: '新建任务',
     parallel: false,
     stage_order: 1,
+    job_type: '', 
     pipeline_jobs: {
       parameters: '{}',
       status: ''
@@ -198,52 +197,55 @@ const handleEditPielineAction = (stage_group_id: string) => {
   }
 };
 
-const confirmEditPielineAction = (data: { stages: Array<{ stage_name: string; stage_type: string; config: any; stage_order: number; parallel: boolean }>, stage_group_name: string }) => {
 
-  const { stages, stage_group_name } = data;
-  const groupIndex = pipelineActionsDefault.value.findIndex(
-    item => item.stage_group_id === currentEditGroupId.value
-
-  );
-
-  if (groupIndex !== -1) {
-    // 创建新数组时直接过滤并添加，减少中间变量
-    const newActions = [
-      ...pipelineActionsDefault.value.filter(item => item.stage_group_id !== currentEditGroupId.value)
-    ];
-
-    // 更新相同group_id的项的group_name（如果有的话）
-    pipelineActionsDefault.value
-      .filter(item => item.stage_group_id === currentEditGroupId.value)
-      .forEach(item => {
-        item.stage_group_name = stage_group_name;
-      });
-
-    // 添加新阶段
-    stages.forEach((stage, index) => {
-      newActions.splice(groupIndex + index, 0, {
-        id: generateTempId(),
-        stage_group_id: currentEditGroupId.value,
-        stage_group_name: stage_group_name,
-        stage_group_order: currentInsertIndex.value,
-        stage_type: stage.stage_type,
-        stage_name: stage.stage_name,
-        parallel: stage.parallel,
-        stage_order: index + 1,
-        pipeline_jobs: {
-          parameters: JSON.stringify(stage.config),
-          status: ''
-        }
+// 调整confirmEditPielineAction方法
+function confirmEditPielineAction(data: { stages: Pipeline_stages[], stage_group_name: string }) {
+  // 创建或更新阶段组
+  if (!groupList.value.find(g => g.stage_group_id === currentEditGroupId.value)) {
+    // 创建新的阶段组，确保类型与groupList匹配
+    const newGroup = {
+      stage_group_id: `group-${Date.now()}`,
+      stage_group_name: data.stage_group_name,
+      stage_group_order: groupList.value.length + 1
+    };
+    
+    // 找到当前编辑的action
+    const currentActionIndex = pipelineActionsDefault.value.findIndex(
+      item => item.stage_group_id === currentEditGroupId.value
+    );
+    
+    // 删除原有阶段
+    if (currentActionIndex !== -1) {
+      pipelineActionsDefault.value = pipelineActionsDefault.value.filter(
+        item => item.stage_group_id !== currentEditGroupId.value
+      );
+    }
+    
+    // 添加新的阶段
+    data.stages.forEach((stage, index) => {
+      pipelineActionsDefault.value.push({
+        ...stage,
+        stage_group_id: newGroup.stage_group_id,
+        stage_group_name: newGroup.stage_group_name,
+        stage_group_order: newGroup.stage_group_order,
+        pipeline_id: '',
+        created_at: '',
+        updated_at: ''
       });
     });
-
-    pipelineActionsDefault.value = newActions;
+    
+    // 重新计算所有group_order
+    pipelineActionsDefault.value
+      .sort((a, b) => (a.stage_group_order || 0) - (b.stage_group_order || 0))
+      .forEach((stage, index) => {
+        stage.stage_group_order = index + 1;
+      });
   }
 
+  
+  // 关闭编辑弹窗
   showEditActionDialog.value = false;
-  ElMessage.success('操作编辑成功');
-};
-
+}
 const handleCopyPielineAction = (stage_group_id: string) => {
   // 找到指定stage_group_id的所有阶段
   const targetStages = pipelineActionsDefault.value.filter(

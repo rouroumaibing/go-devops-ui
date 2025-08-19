@@ -97,33 +97,14 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits, ref, watch, computed, onMounted, nextTick } from 'vue';
+import { Check, Close, Top, Bottom, Plus, Minus } from '@element-plus/icons-vue';
 import { ElMessageBox, ElForm } from 'element-plus';
 import BuildStage from './stages/BuildStage.vue';
 import CheckPointStage from './stages/CheckPointStage.vue';
 import DeployStage from './stages/DeployStage.vue';
 import TestStage from './stages/TestStage.vue';
 import { StageType } from '@/types/pipeline-stagetype';
-import { Pipeline_stages } from '@/types/pipeline';
-
-import { Check, Close, Top, Bottom, Plus, Minus } from '@element-plus/icons-vue';
-
-interface StageConfig {
-  stage_type: string;
-  job_type: string;
-  config: Record<string, any>;
-}
-
-interface ConfirmData {
-  stages: Array<{
-    stage_name: string;
-    stage_type: string;
-    job_type?: string;
-    config: any;
-    stage_order: number;
-    parallel: boolean;
-  }>;
-  stage_group_name: string;
-}
+import { Pipeline_stages, Pipeline_job } from '@/types/pipeline';
 
 const selectedStageType = ref<string>('');
 const selectedJobType = ref<string>('');
@@ -131,6 +112,7 @@ const selectedJobKeys = ref<string[]>([]);
 const currentJob = ref<Pipeline_stages | null>(null);
 const currentJobConfig = ref<Record<string, any>>({});
 const menuData = ref<Pipeline_stages[]>([]);
+const stageOrder = ref<number>(0);
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
 const formData = ref<{ stage_group_name: string; stage_name: string; parallel: boolean }>({ stage_group_name: '', stage_name: '', parallel: false });
 
@@ -149,65 +131,69 @@ const props = defineProps({
   stageType: String,
   stageName: String,
   parallel: Boolean,
-  groupId: String,
+  stageGroupId: String,
   stageConfigs: { type: Object, default: () => ({}) }
 });
 const visible = ref<boolean>(props.visible);
-const stageConfig = ref<Record<string, StageConfig>>({...props.stageConfigs});
+const stageConfig = ref<Record<string, Pipeline_job>>({});
 
-const initMenuData = () => {
-  const stageGroupName = props.stageGroupName || '新建阶段';
-  const stageType = props.stageType || '';
-  const stageName = props.stageName || '新建任务';
-  const parallel = props.parallel || false;
-  const stageConfigs = props.stageConfigs || {};
-
-  formData.value.stage_group_name = stageGroupName;
-  formData.value.stage_name = stageName;
+// 在initMenuData函数中使用正确的类型
+const initMenuData = (stageConfigs: Record<string, Pipeline_stages>) => {
+  const menuData: Pipeline_stages[] = [];
   
-  // 检查是否有已存在的stageConfigs，如果有则根据配置创建menuData
-  const configKeys = Object.keys(stageConfigs);
-  if (configKeys.length > 0) {
-    // 清空menuData并根据配置重建
-    menuData.value = configKeys.map(key => {
-      const config = stageConfigs[key];
-      return {
-        stage_group_name: stageGroupName,
-        stage_order: parseInt(key, 10),
-        stage_type: config.stage_type || stageType,
-        parallel: parallel,
-        stage_name: config.stage_name || stageName,
-        job_type: config.job_type || '',
-        pipeline_jobs: { parameters: JSON.stringify(config.config || {}), status: '' }
-      };
-    }).sort((a, b) => a.stage_order - b.stage_order);
-  } else {
-    // 如果没有配置，则创建默认的menuData项
-    menuData.value = [{
-      stage_group_name: stageGroupName,
+  // 检查stageConfigs是否为空对象
+  if (Object.keys(stageConfigs).length === 0) {
+    // 如果是空对象，创建一个默认的菜单项
+    menuData.push({
+      id: '',
+      stage_group_id: props.stageGroupId || '',
+      stage_group_name: props.stageGroupName || '新建阶段',
+      stage_group_order: 0,
+      stage_type: props.stageType || '',
+      stage_name: '新建任务',
       stage_order: 0,
-      stage_type: stageType,
-      parallel: parallel,
-      stage_name: stageName,
-      pipeline_jobs: { parameters: '', status: '' }
-    }];
+      parallel: false,
+      job_type: '',
+      pipeline_jobs: {
+        parameters: '',
+        status: ''
+      }
+    });
+  } else {
+    // 原有逻辑：遍历配置项
+    Object.keys(stageConfigs).forEach(key => {
+      const config = stageConfigs[key];
+      menuData.push({
+        id: config.id,
+        stage_group_id: config.stage_group_id,
+        stage_group_name: config.stage_group_name,
+        stage_group_order: config.stage_group_order,
+        stage_type: config.stage_type,
+        stage_name: config.stage_name,
+        stage_order: config.stage_order,
+        parallel: config.parallel,
+        job_type: config.job_type,
+        pipeline_jobs: config.pipeline_jobs
+      });
+    });
   }
+  
+  // 按stage_group_order和stage_order排序
+  menuData.sort((a, b) => {
+    if (a.stage_group_order !== b.stage_group_order) {
+      return a.stage_group_order! - b.stage_group_order!;
+    }
+    return a.stage_order! - b.stage_order!;
+  });
 
-  // 设置当前选中的任务和配置
-  const defaultStage = menuData.value[0];
-  currentJob.value = defaultStage;
-  selectedStageType.value = defaultStage.stage_type || '';
-  selectedJobType.value = defaultStage.stage_name || '新建任务';
-  selectedJobKeys.value = [defaultStage.stage_order?.toString() || ''];
-  const stageOrder = defaultStage.stage_order?.toString() || '';
-  currentJobConfig.value = stageConfig.value[stageOrder]?.config || {};
+  return menuData;
 };
 
 const emits = defineEmits<{
   (e: 'update:visible', value: boolean): void;
-  (e: 'confirm', data: ConfirmData): void;
+  (e: 'confirm', data: { stages: Pipeline_stages[], stage_group_name: string }): void;
   (e: 'cancel'): void;
-  (e: 'update:stage-configs', configs: Record<string, StageConfig>): void;
+  (e: 'update:stage-configs', configs: Record<string, Pipeline_job>): void;
 }>();
 
 const currentJobsClean = () => {
@@ -244,18 +230,21 @@ const currentStageComponent = computed(() => {
   }
 });
 
-// 方法 - 更新配置
-const handleJobConfigUpdate = (config: Record<string, any>): void => {
+
+function handleJobConfigUpdate(config: Record<string, any>) {
   if (currentJob.value) {
-    const stageOrder = currentJob.value.stage_order?.toString() || '';
-    stageConfig.value[stageOrder] = {
-      stage_type: currentJob.value.stage_type || '',
-      job_type: selectedJobType.value || '',
-      config
+    // 更新currentJob中的stage_type和job_type
+    currentJob.value.stage_type = selectedStageType.value;
+    currentJob.value.job_type = selectedJobType.value;
+    
+    // 只在Pipeline_job对象中使用parameters属性
+    stageConfig.value[stageOrder.value] = {
+      ...stageConfig.value[stageOrder.value],
+      parameters: JSON.stringify(config)
     };
     emits('update:stage-configs', stageConfig.value);
   }
-};
+}
 
 // 方法 - 确认
 const handleConfirm = async (): Promise<void> => {
@@ -269,28 +258,37 @@ const handleConfirm = async (): Promise<void> => {
     // 同步formData.group_name到menuData
     menuData.value.forEach(node => {
       node.stage_group_name = formData.value.stage_group_name;
-
     });
 
    // 处理部署阶段，根据selectedItems生成多个阶段
-    let jobSelectedItems: ConfirmData['stages'] = [];
+    let jobSelectedItems: Pipeline_stages[] = []; 
     menuData.value.forEach(node => {
       const stageOrder = node.stage_order?.toString() || '';
-      const stageInfo = stageConfig.value[stageOrder] || { stage_name: '', stage_type: '', job_type: '', config: {},stage_order: 0, parallel: false};
+      const pipelineJob = stageConfig.value[stageOrder];
+      
+      // 尝试从parameters中解析配置，如果解析失败则使用空对象
+      let config: Record<string, any> = {};
+      if (pipelineJob?.parameters) {
+        try {
+          config = JSON.parse(pipelineJob.parameters);
+        } catch (e) {
+          console.error('Failed to parse parameters:', e);
+        }
+      }
 
       // 对于部署阶段，如果配置中有selectedItems，则为每个环境生成一个阶段
-      if (stageInfo.config?.selectedItems ) {
+      if (config?.selectedItems) {
         const baseStageName = node.stage_name || '';
-        const stagesItems = stageInfo.config.selectedItems.map((item: any, index: number) => ({
+        const stagesItems = config.selectedItems.map((item: any, index: number) => ({
           stage_name: `${baseStageName}-${item.name}`,
-          stage_type: stageInfo.stage_type || props.stageType || '',
-          job_type: stageInfo.job_type,
-          config: {
-            ...stageInfo.config,
-            selectedItems: [item]
-          },
+          stage_type: node.stage_type || props.stageType || '',
+          job_type: node.job_type,
           stage_order: (node.stage_order || 0) + index,
-          parallel: node.parallel
+          parallel: node.parallel,
+          pipeline_jobs: {
+            parameters: JSON.stringify({...config, selectedItems: [item]})
+          },
+          stage_group_name: formData.value.stage_group_name
         }));
 
         jobSelectedItems = [...jobSelectedItems, ...stagesItems];
@@ -298,11 +296,12 @@ const handleConfirm = async (): Promise<void> => {
         // 其他类型的阶段保持不变
         jobSelectedItems.push({
           stage_name: node.stage_name || '',
-          stage_type: stageInfo.stage_type || props.stageType || '',
-          job_type: stageInfo.job_type,
-          config: stageInfo.config,
+          stage_type: node.stage_type || props.stageType || '',
+          job_type: node.job_type,
           stage_order: node.stage_order || 0,
-          parallel: node.parallel
+          parallel: node.parallel,
+          pipeline_jobs: pipelineJob,
+          stage_group_name: formData.value.stage_group_name
         });
       }
     });
@@ -320,6 +319,11 @@ const handleConfirm = async (): Promise<void> => {
     console.log('表单验证失败:', error);
   }
 };
+defineExpose({
+  handleJobConfigUpdate,
+  handleConfirm,
+  currentJobConfig
+});
 
 // 方法 - 取消
 const handleCancel = (): void => {
@@ -335,9 +339,13 @@ const handleJobClick = (data: any, node: any, e: MouseEvent): void => {
   currentJob.value = stageJob;
   nextTick(() => {
     const stageOrder = currentJob.value?.stage_order?.toString() ?? '';
-    currentJobConfig.value = { ...(stageConfig.value[stageOrder]?.config || {}) };
-    selectedJobType.value = stageConfig.value[stageOrder]?.job_type || '';
-    selectedStageType.value = currentJob.value?.stage_type || '';
+    const jobConfig = stageConfig.value[stageOrder];
+    currentJobConfig.value = jobConfig?.parameters ? JSON.parse(jobConfig.parameters) : {};
+    selectedJobType.value = stageJob.job_type || '';
+    // 只有当stage_type有有效值时才更新selectedStageType
+    if (currentJob.value?.stage_type) {
+      selectedStageType.value = currentJob.value.stage_type;
+    }
   });
 };
 
@@ -367,14 +375,17 @@ const addJob = (job: Pipeline_stages): void => {
   const index = menuData.value.findIndex(item => item.stage_order === job.stage_order);
 
   if (index !== -1) {
-    menuData.value.splice(index + 1, 0, {
+    const newJob: Pipeline_stages = {
       stage_group_name: formData.value.stage_group_name,
       stage_type: '',
       stage_name: '新建任务',
       parallel: false,
       stage_order: menuData.value.length,
+      job_type: '', // 添加job_type字段
       pipeline_jobs: { parameters: '', status: '' }
-    });
+    };
+    
+    menuData.value.splice(index + 1, 0, newJob);
 
     updateStageOrders();
     menuData.value = [...menuData.value];
@@ -384,13 +395,16 @@ const addJob = (job: Pipeline_stages): void => {
     selectedJobKeys.value = [newNode.stage_order?.toString() || ''];
 
     const newStageOrder = newNode.stage_order?.toString() || '';
+    // 只存储parameters，不存储stage_type和job_type
     stageConfig.value[newStageOrder] = {
-      stage_type: newNode.stage_type || '',
-      job_type: '',
-      config: {}
+      parameters: ''
     };
     
-    currentJobConfig.value = stageConfig.value[newStageOrder].config;
+    // 更新newNode中的属性
+    newNode.stage_type = '';
+    newNode.job_type = '';
+    
+    currentJobConfig.value = {};
     selectedJobType.value = '';
   }
 };
@@ -444,7 +458,7 @@ const updateStageOrders = (): void => {
   // 保存当前的配置
   const oldStageConfig = { ...stageConfig.value };
   // 创建新的配置对象
-  const newStageConfig: Record<string, StageConfig> = {};
+  const newStageConfig: Record<string, Pipeline_job> = {}; 
   
   menuData.value.forEach((node, index) => {
     const oldStageOrder = node.stage_order?.toString() || '';
@@ -464,7 +478,7 @@ const updateStageOrders = (): void => {
 
 // 生命周期 - 挂载
 onMounted(() => {
-  initMenuData();
+  menuData.value = initMenuData(props.stageConfigs as Record<string, Pipeline_stages>);
 });
 
 // 监听stageGroupName变化，重新初始化menuData
@@ -472,7 +486,7 @@ watch(
   () => props.stageGroupName,
   (newActionName) => {
     if (newActionName) {
-      initMenuData();
+      menuData.value = initMenuData(props.stageConfigs as Record<string, Pipeline_stages>);
     }
   },
   { immediate: true }
@@ -480,18 +494,14 @@ watch(
 
 // 监听 - visible状态同步
 watch(
-  () => props.visible,
-  (val) => {
-    visible.value = val;
-  },
-  { immediate: true }
-);
-
-watch(
   () => props.stageConfigs,
   (newConfigs) => {
-    if (newConfigs && JSON.stringify(newConfigs) !== JSON.stringify(stageConfig.value)) {
-      stageConfig.value = {...newConfigs};
+    if (newConfigs) {
+      // 使用JSON.stringify比较确保深度对比
+      if (JSON.stringify(newConfigs) !== JSON.stringify(stageConfig.value)) {
+        stageConfig.value = {...newConfigs};
+        menuData.value = initMenuData(props.stageConfigs as Record<string, Pipeline_stages>);
+      }
     }
   },
   { deep: true }
@@ -501,7 +511,6 @@ watch(visible, (val) => {
   emits('update:visible', val);
 });
 
-// stage_name 变化时，更新当前任务的 stage_name
 watch(
   () => formData.value.stage_name,
   (newStageType) => {
@@ -517,11 +526,6 @@ watch(
   (newStageType) => {
     if (currentJob.value) {
       currentJob.value.stage_type = newStageType || '';
-      // 同时更新stageConfig中的stage_type
-      const stageOrder = currentJob.value.stage_order?.toString() || '';
-      if (stageConfig.value[stageOrder]) {
-        stageConfig.value[stageOrder].stage_type = newStageType || '';
-      }
     }
   },
   { immediate: true }
