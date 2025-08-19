@@ -210,7 +210,6 @@ const confirmEditPielineAction = (data: { stages: Array<{ stage_name: string; st
     // 创建新数组时直接过滤并添加，减少中间变量
     const newActions = [
       ...pipelineActionsDefault.value.filter(item => item.stage_group_id !== currentEditGroupId.value)
-
     ];
 
     // 更新相同group_id的项的group_name（如果有的话）
@@ -223,6 +222,7 @@ const confirmEditPielineAction = (data: { stages: Array<{ stage_name: string; st
     // 添加新阶段
     stages.forEach((stage, index) => {
       newActions.splice(groupIndex + index, 0, {
+        id: generateTempId(),
         stage_group_id: currentEditGroupId.value,
         stage_group_name: stage_group_name,
         stage_group_order: currentInsertIndex.value,
