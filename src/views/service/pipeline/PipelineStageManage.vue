@@ -104,7 +104,7 @@ import CheckPointStage from './stages/CheckPointStage.vue';
 import DeployStage from './stages/DeployStage.vue';
 import TestStage from './stages/TestStage.vue';
 import { StageType } from '@/types/pipeline-stagetype';
-import { Pipeline_stages, Pipeline_job } from '@/types/pipeline';
+import { Pipeline_stages } from '@/types/pipeline';
 
 const selectedStageType = ref<string>('');
 const selectedJobType = ref<string>('');
@@ -129,17 +129,21 @@ const props = defineProps({
   stageGroupOrder: Number,
   stageType: String,
   parallel: Boolean,
-  pipelineGroupData: { type: Array as () => Pipeline_stages[], default: () => [] }
+  pipelineGroupData: { 
+    type: Array as () => Pipeline_stages[],
+    default: () => []
+  }
 });
 const visible = ref<boolean>(props.visible);
 let menuData: Pipeline_stages[] = [];
 
 const initMenuData = () => {
     Object.values(props.pipelineGroupData).forEach((value) => {
-    if (value.stage_group_id === props.stageGroupId) {
-      menuData.push(value);
-    }
-  });
+      if (value.stage_group_id === props.stageGroupId) {
+        menuData.push(value);
+      }
+    });
+
   // 按stage_group_order和stage_order排序
   menuData.sort((a, b) => {
     if (a.stage_group_order !== b.stage_group_order) {
@@ -148,6 +152,23 @@ const initMenuData = () => {
     return a.stage_order! - b.stage_order!;
   });
 
+  if (menuData.length > 0) {
+    const firstJob = menuData[0];
+    currentJob.value = firstJob;
+    selectedJobKeys.value = [firstJob.stage_order?.toString() || ''];
+    selectedJobType.value = firstJob.job_type || '';
+    selectedStageType.value = firstJob.stage_type || '';
+    currentJobConfig.value = firstJob.pipeline_job.parameters ? JSON.parse(firstJob.pipeline_job.parameters) : {};
+    formData.value.stage_name = firstJob.stage_name || '';
+    formData.value.stage_group_name = firstJob.stage_group_name || '';
+    formData.value.parallel = firstJob.parallel || false;
+    console.log("firstJob.pipeline_job.parameters", firstJob.pipeline_job.parameters)
+  }
+
+  console.log("menuData", menuData)
+  console.log("currentJobConfig", currentJobConfig)
+
+
   return menuData;
 };
 
@@ -155,8 +176,6 @@ const emits = defineEmits<{
   (e: 'update:visible', value: boolean): void;
   (e: 'confirm', data: Pipeline_stages[]): void;
   (e: 'cancel'): void;
-  (e: 'update: current-edit-configs', configs: Pipeline_stages[]): void;
-
 }>();
 
 const currentJobsClean = () => {
@@ -398,49 +417,7 @@ const updateStageOrders = (): void => {
 // 修改onMounted钩子，确保初始化stageConfig.value
 onMounted(() => {
   menuData = initMenuData();
-  if (menuData.length > 0) {
-    const firstJob = menuData[0];
-    currentJob.value = firstJob;
-    selectedJobKeys.value = [firstJob.stage_order?.toString() || ''];
-    selectedJobType.value = firstJob.job_type || '';
-    selectedStageType.value = firstJob.stage_type || '';
-    currentJobConfig.value = firstJob.pipeline_job.parameters ? JSON.parse(firstJob.pipeline_job.parameters) : {};
-    formData.value.stage_name = firstJob.stage_name || '';
-  }
 });
-
-// 修改props.visible的watch，确保每次打开对话框时都能正确初始化数据
-watch(
-  () => props.visible,
-  (newVisible) => {
-    visible.value = newVisible;
-    
-    // 当对话框打开时，重新初始化数据
-    if (newVisible) {
-      menuData = initMenuData();
-      if (menuData.length > 0) {
-        const firstJob = menuData[0];
-        currentJob.value = firstJob;
-        selectedJobKeys.value = [firstJob.stage_order?.toString() || ''];
-        selectedJobType.value = firstJob.job_type || '';
-        selectedStageType.value = firstJob.stage_type || '';
-        currentJobConfig.value = firstJob.pipeline_job.parameters ? JSON.parse(firstJob.pipeline_job.parameters) : {};
-        formData.value.stage_name = firstJob.stage_name || '';
-      }
-    }
-  },
-  { immediate: true }
-);
-
-watch(
-  () => props.stageGroupName,
-  (newGroupName) => {
-    if (newGroupName) {
-      menuData = initMenuData();
-    }
-  },
-  { immediate: true }
-);
 
 watch(
   () => formData.value.stage_name,

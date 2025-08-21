@@ -34,7 +34,7 @@
                 </template>
             </div>
         </el-form>
-          <PipelineStageManage
+          <PipelineStageManage v-if="showEditActionDialog"
             :key="currentEditGroupId"
             :visible="showEditActionDialog"
             :title="editActionDialogTitle"
@@ -42,16 +42,14 @@
             :stage-group-name="editGroupName"
             :stage-group-order="currentEditGroupOrder"
             :stage-type="currentEditStageType"
-            :all-stage-configs="pipelineGroupData"
+            :pipeline-group-data="pipelineGroupData"
             @update:visible="(value: boolean) => showEditActionDialog = value"
             @confirm="confirmEditPielineAction"
             @cancel="() => showEditActionDialog = false"
-            @update:current-edit-configs="handleUpdateCurrentEditConfigs"
           ></PipelineStageManage>
         <div class="form-actions">
           <el-button @click="handlePielineCancel">取消</el-button>
           <el-button type="primary" @click="handlePielineSubmit">提交</el-button>
-
         </div>
       </div>
 
@@ -82,7 +80,6 @@ const currentEditStageType = ref('');
 const currentEditStageName = ref('');
 const currentEditGroupId = ref<string>('');
 const currentEditGroupOrder = ref<number>(0);
-const currentEditStageConfig = ref<Pipeline_stages>();
 const pipelineForm = ref<FormInstance>();
 
 const props = defineProps<{
@@ -135,6 +132,13 @@ const NewStage = (): Pipeline_stages => {
   };
 };
 
+const pipelineGroupData = ref<Pipeline_stages[]>([
+  {
+   ...NewStage()
+  }
+]);
+
+
 // 对pipelineActionsDefault进行处理，将group_name相同的阶段合并，生成groupList
 // 保留group_order、group_name、group_id，剔除默认新增节点、阶段
 // 优化groupList计算逻辑，使用对象而非Map提升性能
@@ -186,11 +190,6 @@ const handleEditPielineAction = (stage_group_id: string) => {
     currentEditGroupOrder.value = firstAction.stage_group_order!;
     currentEditStageType.value = firstAction.stage_type!;
     currentEditStageName.value = firstAction.stage_name!;
-    Object.values(pipelineGroupData.value).forEach((value) => {
-    if (value.stage_order === firstAction.stage_order) {
-      currentEditStageConfig.value = value;
-    }
-  });
 
     showEditActionDialog.value = true;
   } else {
@@ -225,11 +224,6 @@ function confirmEditPielineAction(data: Pipeline_stages[]) {
   // 关闭编辑弹窗
   showEditActionDialog.value = false;
 }
-
-const handleUpdateCurrentEditConfigs = (data: Pipeline_stages[]) => {
-  currentEditStageConfig.value = data;
-}
-
 
 const handleCopyPielineAction = (stage_group_id: string) => {
   // 找到指定stage_group_id的所有阶段
@@ -333,10 +327,7 @@ const handleMoveForwardPielineAction = (stage_group_id: string) => {
     ElMessage.info('已经是第一个操作组，无法向前移动');
     return;
   }
-  
-  // 获取前一个组的最大order
-  const prevMaxOrder = Math.max(...prevStages.map(item => item.stage_group_order || 0));
-  
+    
   // 交换顺序
   pipelineGroupData.value.forEach(stage => {
     if (targetStages.some(t => t.stage_group_id === stage.stage_group_id)) {
@@ -425,12 +416,6 @@ const handlePielineSubmit = async () => {
 const handlePielineCancel = () => {
   emit('cancel');
 };
-
-const pipelineGroupData = ref<Pipeline_stages[]>([
-  {
-   ...NewStage()
-  }
-]);
 
 </script>
 

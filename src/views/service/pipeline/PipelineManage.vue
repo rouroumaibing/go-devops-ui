@@ -1,10 +1,10 @@
 <template>
   <el-card class="pipeline-orchestration-container">
     <template #header>
-      <el-button v-if="!isCreateMode" type="primary" icon="Plus" @click="enterCreateMode">创建流水线</el-button>
+      <el-button v-if="!isCreatePipeline" type="primary" icon="Plus" @click="enterCreateMode">创建流水线</el-button>
     </template>
 
-    <div v-if="!isCreateMode">
+    <div v-if="!isCreatePipeline">
       <div>
         <el-skeleton v-if="loading" :rows="5" border stripe class="table-skeleton"></el-skeleton>
         <el-alert v-else-if="error" type="error" description="获取流水线列表失败，请重试" show-icon></el-alert>
@@ -58,17 +58,15 @@
     </div>
 
     <el-drawer 
-      v-model="isCreateMode"
+      v-model="isCreatePipeline"
       direction="rtl"
       title="创建流水线"
       size="80%"
     >
       <PipelineCreate
-        ref="createPipelineFormRef"
-        :initial-form-data="formData"
         :component-id="componentId || ''"
         :service-tree="serviceTree || ''"
-        @cancel="isCreateMode = false"
+        @cancel="isCreatePipeline = false"
         @success="handlePipelineCreated" 
       />
     </el-drawer>
@@ -78,27 +76,14 @@
 <script setup lang="ts">
 import axios from 'axios';
 import { ref, onMounted, watch, computed, reactive, toRefs } from 'vue';
-import { ElMessage, ElForm } from 'element-plus';
+import { ElMessage } from 'element-plus';
 import { useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
 import PipelineMap from './PipelineMap.vue';
 
-import type { Pipeline } from '@/types/pipeline';
+import { Pipeline } from '@/types/pipeline';
 
-interface PipelineFormData {
-  name: string;
-  type: string;
-  group: string;
-  steps?: {
-    mainStep: number;
-    subSteps: Record<string, number>;
-  };
-}
-interface CreatePipelineFormExposed {
-  pipelineForm: InstanceType<typeof ElForm> | undefined;
-  validateForm: () => Promise<boolean>;
-}
 
 const state = reactive({
   pipelineDetail: null as Pipeline | null,
@@ -106,7 +91,6 @@ const state = reactive({
 
 const { pipelineDetail } = toRefs(state);
 
-const createPipelineFormRef = ref<InstanceType<typeof PipelineCreate> & CreatePipelineFormExposed>();
 const pipelineList = ref<Pipeline[]>([]);
 const loading = ref(false);
 const error = ref('');
@@ -114,9 +98,7 @@ const router = useRoute();
 const componentId = ref<string | undefined>(undefined);
 const serviceTree = ref<string | undefined>(undefined);
 const selectedPipelineId = ref<string | undefined>(undefined);
-const isCreateMode = ref(false);
-const formData = ref<PipelineFormData>({ name: '', type: '', group: '' });
-const pipelineForm = ref<InstanceType<typeof ElForm>>();
+const isCreatePipeline = ref(false);
 
 // 树形结构的props配置
 const treeProps = {
@@ -163,11 +145,7 @@ const handleApiError = (error: any, defaultData: any[], message: string) => {
 };
 
 const enterCreateMode = () => {
-  isCreateMode.value = true;
-  formData.value = { name: '', type: '', group: '' };
-  if (pipelineForm.value) {
-    pipelineForm.value.clearValidate();
-  }
+  isCreatePipeline.value = true;
 };
 
 const handleEdit = (pipeline: Pipeline) => {
@@ -189,7 +167,7 @@ const handlePipelineNodeClick = (data: any) => {
 };
 
 const handlePipelineCreated = async () => {
-  isCreateMode.value = false;
+  isCreatePipeline.value = false;
   ElMessage.success('流水线创建成功');
   if (componentId.value) {
     pipelineList.value = await fetchPipelines(componentId.value);
@@ -246,7 +224,7 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
         "updated_at": "2025-07-15 10:30",
-        "pipeline_jobs" :{
+        "pipeline_job" :{
             "id": "000-0000-0000-1111",
             "pipeline_id": "0000-0000-0123",
             "stage_id": "000-0000-0000",
@@ -267,7 +245,7 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
         "updated_at": "2025-07-15 10:30",
-        "pipeline_jobs" :{
+        "pipeline_job" :{
             "id": "000-0000-0000-1112",
             "pipeline_id": "0000-0000-0123",
             "stage_id": "000-0000-0001",
@@ -288,7 +266,7 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
         "updated_at": "2025-07-15 10:30",
-        "pipeline_jobs" :{
+        "pipeline_job" :{
             "id": "000-0000-0000-1114",
             "pipeline_id": "0000-0000-0123",
             "stage_id": "000-0000-0003",
@@ -309,7 +287,7 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
         "updated_at": "2025-07-15 10:30",
-        "pipeline_jobs" :{
+        "pipeline_job" :{
             "id": "000-0000-0000-1115",
             "pipeline_id": "0000-0000-0123",
             "stage_id": "000-0000-0004",
@@ -330,7 +308,7 @@ const generateDefaultPipeline = (): Pipeline[] =>[
         "pipeline_id": "0000-0000-0123",
         "created_at": "2025-07-15 10:30",
         "updated_at": "2025-07-15 10:30",
-        "pipeline_jobs" :{
+        "pipeline_job" :{
             "id": "000-0000-0000-1117",
             "pipeline_id": "0000-0000-0123",
             "stage_id": "000-0000-0006",
