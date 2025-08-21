@@ -38,19 +38,15 @@
             :key="currentEditGroupId"
             :visible="showEditActionDialog"
             :title="editActionDialogTitle"
-            :stage-group-name="editGroupName"
-            :stage-type="currentEditStageType"
             :stage-group-id="currentEditGroupId"
-            :stage-configs="(allStageConfigs.value || {})[currentEditGroupId || ''] || {}"
+            :stage-group-name="editGroupName"
+            :stage-group-order="currentEditGroupOrder"
+            :stage-type="currentEditStageType"
+            :all-stage-configs="pipelineGroupData"
             @update:visible="(value: boolean) => showEditActionDialog = value"
             @confirm="confirmEditPielineAction"
             @cancel="() => showEditActionDialog = false"
-            @update:stage-configs="(configs) => {
-              if (currentEditGroupId) {
-                allStageConfigs.value = { ...allStageConfigs.value };
-                allStageConfigs.value[currentEditGroupId] = configs;
-              }
-            }"
+            @update:current-edit-configs="handleUpdateCurrentEditConfigs"
           ></PipelineStageManage>
         <div class="form-actions">
           <el-button @click="handlePielineCancel">取消</el-button>
@@ -61,7 +57,7 @@
 
       <div class="pipeline-run-container">
         <PipelineRun  
-        :pipeline-stages="pipelineActionsDefault"/>
+        :pipeline-stages="pipelineGroupData"/>
       </div>
   </div>
 </template>
@@ -85,9 +81,9 @@ const editActionDialogTitle = ref('编辑');
 const currentEditStageType = ref('');
 const currentEditStageName = ref('');
 const currentEditGroupId = ref<string>('');
+const currentEditGroupOrder = ref<number>(0);
+const currentEditStageConfig = ref<Pipeline_stages>();
 const pipelineForm = ref<FormInstance>();
-// 存储全部阶段配置
-const allStageConfigs = ref<Record<string, Record<string, any>>>({});
 
 const props = defineProps<{
   componentId: string;
@@ -132,7 +128,7 @@ const NewStage = (): Pipeline_stages => {
     parallel: false,
     stage_order: 1,
     job_type: '', 
-    pipeline_jobs: {
+    pipeline_job: {
       parameters: '{}',
       status: ''
     }
@@ -145,7 +141,7 @@ const NewStage = (): Pipeline_stages => {
 const groupList = computed(() => {
   const groupMap: Record<string, { stage_group_name: string; stage_group_order: number; stage_group_id: string }> = {};
 
-  pipelineActionsDefault.value.forEach(action => {
+  pipelineGroupData.value.forEach(action => {
     const { stage_group_name, stage_group_order, stage_group_id } = action;
 
     if (!groupMap[stage_group_name]) {
@@ -162,12 +158,11 @@ const groupList = computed(() => {
 const handleAddPielineAction = (index: number) => {
   currentInsertIndex.value = index;
   // 插入到指定位置
-  pipelineActionsDefault.value.splice(currentInsertIndex.value, 0, NewStage());
+  pipelineGroupData.value.splice(currentInsertIndex.value, 0, NewStage());
 
   // 重新计算所有group_order（从1开始递增）
-  pipelineActionsDefault.value.forEach((stage, index) => {
+  pipelineGroupData.value.forEach((stage, index) => {
     stage.stage_group_order = index + 1;
-
   });
 
   ElMessage.success('操作添加成功');
@@ -175,80 +170,70 @@ const handleAddPielineAction = (index: number) => {
 
 // 添加新编辑的处理函数
 const handleEditPielineAction = (stage_group_id: string) => {
-
-  // 找到具有指定group_id的第一个action
-  const targetAction = pipelineActionsDefault.value.find(
+  // 找到所有具有指定group_id的阶段
+  const targetActions = pipelineGroupData.value.filter(
     item => item.stage_group_id === stage_group_id
-
   );
-  if (targetAction) {
-    currentInsertIndex.value = pipelineActionsDefault.value.findIndex(
-      item => item.stage_group_order === targetAction.stage_group_order
-    );
-    editGroupName.value = targetAction.stage_group_name;
-    currentEditGroupId.value = targetAction.stage_group_id!; 
-    currentEditStageType.value = targetAction.stage_type!;
-    currentEditStageName.value = targetAction.stage_name!;
-    
-    showEditActionDialog.value = true;
 
+  if (targetActions.length > 0) {
+    // 取第一个阶段的order作为基准
+    const firstAction = targetActions[0];
+    currentInsertIndex.value = pipelineGroupData.value.findIndex(
+      item => item.stage_group_order === firstAction.stage_group_order
+    );
+    editGroupName.value = firstAction.stage_group_name;
+    currentEditGroupId.value = firstAction.stage_group_id!;
+    currentEditGroupOrder.value = firstAction.stage_group_order!;
+    currentEditStageType.value = firstAction.stage_type!;
+    currentEditStageName.value = firstAction.stage_name!;
+    Object.values(pipelineGroupData.value).forEach((value) => {
+    if (value.stage_order === firstAction.stage_order) {
+      currentEditStageConfig.value = value;
+    }
+  });
+
+    showEditActionDialog.value = true;
   } else {
     ElMessage.error('未找到对应的操作');
   }
 };
 
-
-// 调整confirmEditPielineAction方法
-function confirmEditPielineAction(data: { stages: Pipeline_stages[], stage_group_name: string }) {
+function confirmEditPielineAction(data: Pipeline_stages[]) {
   // 创建或更新阶段组
-  if (!groupList.value.find(g => g.stage_group_id === currentEditGroupId.value)) {
-    // 创建新的阶段组，确保类型与groupList匹配
-    const newGroup = {
-      stage_group_id: `group-${Date.now()}`,
-      stage_group_name: data.stage_group_name,
-      stage_group_order: groupList.value.length + 1
-    };
-    
-    // 找到当前编辑的action
-    const currentActionIndex = pipelineActionsDefault.value.findIndex(
-      item => item.stage_group_id === currentEditGroupId.value
-    );
-    
-    // 删除原有阶段
-    if (currentActionIndex !== -1) {
-      pipelineActionsDefault.value = pipelineActionsDefault.value.filter(
-        item => item.stage_group_id !== currentEditGroupId.value
-      );
-    }
-    
-    // 添加新的阶段
-    data.stages.forEach((stage, index) => {
-      pipelineActionsDefault.value.push({
-        ...stage,
-        stage_group_id: newGroup.stage_group_id,
-        stage_group_name: newGroup.stage_group_name,
-        stage_group_order: newGroup.stage_group_order,
-        pipeline_id: '',
-        created_at: '',
-        updated_at: ''
-      });
-    });
-    
-    // 重新计算所有group_order
-    pipelineActionsDefault.value
-      .sort((a, b) => (a.stage_group_order || 0) - (b.stage_group_order || 0))
-      .forEach((stage, index) => {
-        stage.stage_group_order = index + 1;
-      });
-  }
-
+  const groupId = currentEditGroupId.value || generateTempId();
+  
+  const insertPosition = currentInsertIndex.value;
+  // 删除原有阶段
+  pipelineGroupData.value = pipelineGroupData.value.filter(
+    item => item.stage_group_id !== currentEditGroupId.value
+  );
+  
+  data.forEach((stage, index) => {
+    stage.stage_group_id = groupId;
+    stage.stage_group_order = insertPosition + index + 1;
+    pipelineGroupData.value.splice(insertPosition + index, 0, stage);
+  });
+  
+  // 重新计算所有group_order
+  pipelineGroupData.value.forEach((stage, index) => {
+    stage.stage_group_order = index + 1;
+  });
+  
+  // 强制刷新pipelineActionsDefault以确保UI更新
+  pipelineGroupData.value = [...pipelineGroupData.value];
   
   // 关闭编辑弹窗
   showEditActionDialog.value = false;
 }
+
+const handleUpdateCurrentEditConfigs = (data: Pipeline_stages[]) => {
+  currentEditStageConfig.value = data;
+}
+
+
 const handleCopyPielineAction = (stage_group_id: string) => {
   // 找到指定stage_group_id的所有阶段
-  const targetStages = pipelineActionsDefault.value.filter(
+  const targetStages = pipelineGroupData.value.filter(
     item => item.stage_group_id === stage_group_id
   );
   
@@ -258,7 +243,7 @@ const handleCopyPielineAction = (stage_group_id: string) => {
   }
   
   // 获取目标组的最大order
-  const maxOrder = Math.max(...pipelineActionsDefault.value.map(item => item.stage_group_order || 0));
+  const maxOrder = Math.max(...pipelineGroupData.value.map(item => item.stage_group_order || 0));
   const newGroupId = generateTempId();
   const baseGroupName = targetStages[0].stage_group_name || '复制的阶段';
   const newGroupName = `${baseGroupName}（复制）`;
@@ -272,10 +257,10 @@ const handleCopyPielineAction = (stage_group_id: string) => {
   }));
   
   // 添加新的阶段
-  pipelineActionsDefault.value.push(...newStages);
+  pipelineGroupData.value.push(...newStages);
   
   // 重新计算所有group_order（从1开始递增）
-  pipelineActionsDefault.value
+  pipelineGroupData.value
     .sort((a, b) => (a.stage_group_order || 0) - (b.stage_group_order || 0))
     .forEach((stage, index) => {
       stage.stage_group_order = index + 1;
@@ -296,16 +281,16 @@ const handleDeletePielineAction = (stage_group_id: string) => {
     }
   ).then(() => {
     // 过滤掉要删除的阶段
-    const filteredStages = pipelineActionsDefault.value.filter(
+    const filteredStages = pipelineGroupData.value.filter(
       item => item.stage_group_id !== stage_group_id
     );
     
     // 更新阶段配置
-    if (filteredStages.length !== pipelineActionsDefault.value.length) {
-      pipelineActionsDefault.value = filteredStages;
+    if (filteredStages.length !== pipelineGroupData.value.length) {
+      pipelineGroupData.value = filteredStages;
       
       // 重新计算所有group_order（从1开始递增）
-      pipelineActionsDefault.value.forEach((stage, index) => {
+      pipelineGroupData.value.forEach((stage, index) => {
         stage.stage_group_order = index + 1;
       });
       
@@ -321,7 +306,7 @@ const handleDeletePielineAction = (stage_group_id: string) => {
 
 const handleMoveForwardPielineAction = (stage_group_id: string) => {
   // 找到指定stage_group_id的所有阶段
-  const targetStages = pipelineActionsDefault.value.filter(
+  const targetStages = pipelineGroupData.value.filter(
     item => item.stage_group_id === stage_group_id
   );
   
@@ -340,7 +325,7 @@ const handleMoveForwardPielineAction = (stage_group_id: string) => {
   }
   
   // 获取前一个组的所有阶段
-  const prevStages = pipelineActionsDefault.value.filter(
+  const prevStages = pipelineGroupData.value.filter(
     item => (item.stage_group_order || 0) < targetMinOrder
   );
   
@@ -353,7 +338,7 @@ const handleMoveForwardPielineAction = (stage_group_id: string) => {
   const prevMaxOrder = Math.max(...prevStages.map(item => item.stage_group_order || 0));
   
   // 交换顺序
-  pipelineActionsDefault.value.forEach(stage => {
+  pipelineGroupData.value.forEach(stage => {
     if (targetStages.some(t => t.stage_group_id === stage.stage_group_id)) {
       // 目标组的order减去前一组的数量
       stage.stage_group_order = (stage.stage_group_order || 0) - prevStages.length;
@@ -368,7 +353,7 @@ const handleMoveForwardPielineAction = (stage_group_id: string) => {
 
 const handleMoveBackwardPielineAction = (stage_group_id: string) => {
   // 找到指定stage_group_id的所有阶段
-  const targetStages = pipelineActionsDefault.value.filter(
+  const targetStages = pipelineGroupData.value.filter(
     item => item.stage_group_id === stage_group_id
   );
   
@@ -380,7 +365,7 @@ const handleMoveBackwardPielineAction = (stage_group_id: string) => {
   // 获取目标组的最大order
   const targetMaxOrder = Math.max(...targetStages.map(item => item.stage_group_order || 0));
   // 获取所有阶段的最大order
-  const maxOrder = Math.max(...pipelineActionsDefault.value.map(item => item.stage_group_order || 0));
+  const maxOrder = Math.max(...pipelineGroupData.value.map(item => item.stage_group_order || 0));
   
   // 如果已经是最后一个，不能再向后移动
   if (targetMaxOrder >= maxOrder) {
@@ -389,7 +374,7 @@ const handleMoveBackwardPielineAction = (stage_group_id: string) => {
   }
   
   // 获取后一个组的所有阶段
-  const nextStages = pipelineActionsDefault.value.filter(
+  const nextStages = pipelineGroupData.value.filter(
     item => (item.stage_group_order || 0) > targetMaxOrder
   );
   
@@ -397,12 +382,9 @@ const handleMoveBackwardPielineAction = (stage_group_id: string) => {
     ElMessage.info('已经是最后一个操作组，无法向后移动');
     return;
   }
-  
-  // 获取后一个组的最小order
-  const nextMinOrder = Math.min(...nextStages.map(item => item.stage_group_order || 0));
-  
+    
   // 交换顺序
-  pipelineActionsDefault.value.forEach(stage => {
+  pipelineGroupData.value.forEach(stage => {
     if (targetStages.some(t => t.stage_group_id === stage.stage_group_id)) {
       // 目标组的order加上后一组的数量
       stage.stage_group_order = (stage.stage_group_order || 0) + nextStages.length;
@@ -424,7 +406,7 @@ const handlePielineSubmit = async () => {
     pipeline_group: formData.pipeline_group,
     component_id: props.componentId,
     service_tree: props.serviceTree,
-    pipeline_stages: pipelineActionsDefault.value
+    pipeline_stages: pipelineGroupData.value
   };
 
   try {
@@ -444,13 +426,11 @@ const handlePielineCancel = () => {
   emit('cancel');
 };
 
-const pipelineActionsDefault = ref<Pipeline_stages[]>([
+const pipelineGroupData = ref<Pipeline_stages[]>([
   {
    ...NewStage()
   }
 ]);
-
-
 
 </script>
 

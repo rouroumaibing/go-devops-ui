@@ -13,16 +13,16 @@ export interface Pipeline_stages {
   id?: string;
   stage_group_id?: string;
   stage_group_name: string;
-  stage_group_order?: number;
+  stage_group_order: number;
   stage_type?: string;
   stage_name?: string;
   parallel: boolean;
-  stage_order?: number;
+  stage_order: number;
   job_type?: string;
   pipeline_id?: string;
   created_at?: string;
   updated_at?: string;
-  pipeline_jobs?: Pipeline_job;
+  pipeline_job: Pipeline_job;
 }
 
 export interface Pipeline_job{
@@ -34,3 +34,4 @@ export interface Pipeline_job{
   created_at?: string;
   updated_at?: string;  
 }
+
