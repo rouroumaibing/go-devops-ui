@@ -67,7 +67,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="editDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitEditForm(componentDetail.id)">确定</el-button>
+          <el-button type="primary" @click="submitEditForm(String(componentDetail.id))">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -81,23 +81,12 @@ import { useRoute } from 'vue-router';
 import { ref, onMounted, toRefs, reactive} from 'vue';
 import { Edit } from '@element-plus/icons-vue';
 import { ElMessage, ElForm} from 'element-plus';
-
-interface componentData {
-  id: string;
-  name: string;
-  service_tree: string;
-  owner: string;
-  description?: string;
-  repo_url: string;
-  repo_branch: string;
-  created_at?: string;
-  updated_at?: string;
-}
+import { Component } from '@/types/component-manage';
 
 const route = useRoute();
 
 const state = reactive({
-  componentDetail: {} as componentData
+  componentDetail: {} as Component
 })
 
 const { componentDetail } = toRefs(state)
@@ -105,7 +94,7 @@ const { componentDetail } = toRefs(state)
 // 编辑对话框状态
 const editDialogVisible = ref(false);
 // 编辑表单数据
-const editForm = ref<Partial<componentData>>({});
+const editForm = ref<Partial<Component>>({});
 // 编辑表单验证规则
 const editFormRules = ref({
   repo_url: [{ required: true, message: '请输入代码库地址', trigger: 'blur' }],
@@ -134,8 +123,8 @@ const submitEditForm = async (id: string) => {
   try {
     await editFormRef.value.validate();
     //继承表单里的组件ID
-    editForm.value.id=id;
-    const success = await putComponentData(id, editForm.value as componentData);
+    editForm.value.id = Number(id);
+    const success = await putComponentData(id, editForm.value as Component);
     if (success) {
       ElMessage.success('组件更新成功');
       editDialogVisible.value = false;
@@ -164,16 +153,17 @@ onMounted(() => {
 // 加载组件数据的函数
 const fetchComponentData = async (id: string) => {
   try {
-    const response =  await axios.get(`/api/component/${id}`);
+    const response =  await axios.get<Component>(`/api/component/${id}`);
+    // 在获取数据的地方添加类型断言
     componentDetail.value = response.data;
   } catch (error) {
     ElMessage.error('加载组件详情失败');
   }
 };
 
-const putComponentData = async (id: string, data: componentData) => {
+const putComponentData = async (id: string, data: Component) => {
   try {
-    const response =  await axios.put(`/api/component/${id}`, data);
+    const response =  await axios.put<Component>(`/api/component/${id}`, data);
     componentDetail.value = response.data;
     return true;
   } catch (error) {

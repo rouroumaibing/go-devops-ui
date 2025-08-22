@@ -41,7 +41,7 @@
             v-model="row.status"
             :active-value="1"
             :inactive-value="0"
-            @change="(value) => handleStatusChange(row.id, value ? 1 : 0)"
+            @change="(value: boolean) => handleStatusChange(row.id, value ? 1 : 0)"
           />
         </template>
       </el-table-column>
@@ -196,8 +196,8 @@ const filteredUserGroups = computed(() => {
 const fetchUserGroups = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('/api/user-groups');
-    userGroups.value = response.data.data || DEFAULT_USER_GROUPS;
+    const response = await axios.get<UserGroup[]>('/api/user-groups');
+    userGroups.value = response.data || DEFAULT_USER_GROUPS;
   } catch (err) {
     console.error('Failed to fetch user groups:', err);
     // 只设置默认数据，不设置error变量

@@ -180,7 +180,7 @@ const { query, treeData, loading, expandedKeys, componentDetail, addNodeDialogVi
 const fetchServiceTree = async () => {
   try {
     loading.value = true;
-    const response = await axios.get('/api/servicetree');
+    const response = await axios.get<ServiceTree[]>('/api/servicetree');
     treeData.value = response.data
     if (treeData.value.length === 0) {
       treeData.value = generateDefaultTree();
@@ -197,7 +197,7 @@ const fetchServiceTree = async () => {
 const fetchComponentDetail = async (id: string) => {
   try {
     loading.value = true;
-    const response = await axios.get(`/api/component/${id}`);
+    const response = await axios.get<Component>(`/api/component/${id}`);
     componentDetail.value = response.data;
   } catch (error) {
     ElMessage.error('Failed to fetch component detail, please try again');
@@ -312,7 +312,7 @@ const addChildNode = async () => {
     // 显示加载状态
     loading.value = true
     if (newNodeData.node_type === 'service') {
-      const response = await axios.post('/api/component', newComponentData, {
+      const response = await axios.post<Component>('/api/component', newComponentData, {
         headers: {
           'Content-Type': 'application/json'
         }

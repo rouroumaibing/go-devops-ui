@@ -12,13 +12,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
+    "typeRoots": ["node_modules/@types", "types"],
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
+    "noEmit": true,
     "forceConsistentCasingInFileNames": true,
-    "types": [
-      "vite/client",
-      "element-plus/global"
-    ],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],

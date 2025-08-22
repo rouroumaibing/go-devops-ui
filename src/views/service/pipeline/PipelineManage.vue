@@ -177,7 +177,7 @@ const handlePipelineCreated = async () => {
 const fetchPipelines = async (componentId: string) => {
   try {
     loading.value = true;
-    const response = await axios.get(`/api/component/${componentId}/pipelines`);
+    const response = await axios.get<Pipeline>(`/api/component/${componentId}/pipelines`);
     pipelineDetail.value = response.data;
     return Array.isArray(pipelineDetail.value) ? pipelineDetail.value : generateDefaultPipeline();
   } catch (err) {

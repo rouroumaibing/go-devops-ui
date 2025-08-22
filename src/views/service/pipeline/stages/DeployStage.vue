@@ -59,7 +59,7 @@ const router = useRoute();
 const fetchEnv = async (componentId: string) => {
   try {
     loading.value = true;
-    const response = await axios.get(`/api/component/${componentId}/environments`);
+    const response = await axios.get<EnvironmentTreeNode[]>(`/api/component/${componentId}/environments`);
     if (response.data.length > 0) {
       treeData.value = response.data;
     } else {

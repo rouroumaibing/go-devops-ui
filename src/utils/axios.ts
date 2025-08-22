@@ -6,10 +6,10 @@ const instance = axios.create({
   headers: {
     'Content-Type': 'application/json', 
   },
-  transformRequest: [data => {
+  transformRequest: [(data: any) => {
     // 自动将对象转换为JSON字符串
     return data && typeof data === 'object' ? JSON.stringify(data) : data;
-  }]
+  }] as any
 });
 
 // 响应拦截器
