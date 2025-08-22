@@ -12,6 +12,7 @@
         <el-select 
           v-model="selectedStageType"
           placeholder="请选择阶段类型"
+          :disabled="!isEditSelected"
         >
           <el-option 
             v-for="type in StageType"
@@ -112,7 +113,7 @@ const selectedJobKeys = ref<string[]>([]);
 const currentJob = ref<Pipeline_stages | null>(null);
 const currentJobConfig = ref<Record<string, any>>({});
 const formRef = ref<InstanceType<typeof ElForm> | null>(null);
-const formData = ref<{ stage_group_name: string; stage_name: string; parallel: boolean }>({ stage_group_name: '', stage_name: '', parallel: false });
+const formData = ref<{ stage_group_name: string; stage_name: string; parallel: boolean; stage_type: string }>({ stage_group_name: '', stage_name: '', parallel: false, stage_type: '' });
 
 const rules = ref<Record<string, any>>({
   stage_name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
@@ -135,6 +136,7 @@ const props = defineProps({
   }
 });
 const visible = ref<boolean>(props.visible);
+const isEditSelected = ref<boolean>(false);
 let menuData: Pipeline_stages[] = [];
 
 const initMenuData = () => {
@@ -158,16 +160,17 @@ const initMenuData = () => {
     selectedJobKeys.value = [firstJob.stage_order?.toString() || ''];
     selectedJobType.value = firstJob.job_type || '';
     selectedStageType.value = firstJob.stage_type || '';
-    currentJobConfig.value = firstJob.pipeline_job.parameters ? JSON.parse(firstJob.pipeline_job.parameters) : {};
     formData.value.stage_name = firstJob.stage_name || '';
     formData.value.stage_group_name = firstJob.stage_group_name || '';
     formData.value.parallel = firstJob.parallel || false;
-    console.log("firstJob.pipeline_job.parameters", firstJob.pipeline_job.parameters)
+    currentJobConfig.value = JSON.parse(firstJob.pipeline_job.parameters || '{}');
+    // 若不存在stage_type，则为编辑状态
+    if (!firstJob.stage_type) {
+      isEditSelected.value = true;
+    } else {
+      isEditSelected.value = false;
+    }
   }
-
-  console.log("menuData", menuData)
-  console.log("currentJobConfig", currentJobConfig)
-
 
   return menuData;
 };
@@ -271,7 +274,9 @@ const handleConfirm = async (): Promise<void> => {
             job_type: selectedJobType.value,
             stage_order: node.stage_order,
             parallel: node.parallel,
-            pipeline_job: tmpConfig, 
+            pipeline_job: {
+              parameters: JSON.stringify(tmpConfig)
+            },
           });
         }
     });
@@ -308,11 +313,9 @@ const handleJobClick = (data: any, node: any, e: MouseEvent): void => {
   currentJob.value = stageJob;
 
   nextTick(() => {
+    selectedJobType.value = stageJob.job_type || '';
+    formData.value.stage_name = stageJob.stage_name || '';
     currentJobConfig.value = JSON.parse(stageJob.pipeline_job.parameters || '{}');
-    selectedJobType.value = stageJob.job_type || ''
-    if (currentJob.value?.stage_type) {
-      selectedStageType.value = currentJob.value.stage_type;
-    }
   });
 };
 
@@ -428,17 +431,6 @@ watch(
   }
 );
 
-// 监听selectedStageType变化，同步到currentJob
-watch(
-  () => selectedStageType.value,
-  (newStageType) => {
-    if (currentJob.value) {
-      currentJob.value.stage_type = newStageType || '';
-    }
-  },
-  { immediate: true }
-);
-
 watch(visible, (val) => {
   emits('update:visible', val);
 });
@@ -450,6 +442,18 @@ watch(
   },
   { immediate: true }
 );
+
+// 监听selectedStageType变化，同步到currentJob
+watch(
+  () => selectedStageType.value,
+  (newStageType) => {
+    if (currentJob.value) {
+      currentJob.value.stage_type = newStageType || '';
+    }
+  },
+  { immediate: true }
+);
+
 
 </script>
 

@@ -27,23 +27,12 @@ const emits = defineEmits<{
   (e: 'update:config', config: { timeoutHours: number; }): void
 }>();
 
-// 创建响应式变量存储构建配置，初始值从props中获取或使用空字符串
 const buildConfig = ref<{
   timeoutHours: number;
 }>({
   timeoutHours: formProps.config?.timeoutHours || 24
 });
 
-// 监听props.config变化，确保外部更新时能同步到内部状态
-watch(() => formProps.config, (newConfig) => {
-  if (newConfig) {
-    buildConfig.value = {
-      timeoutHours: newConfig.timeoutHours || 24
-    };
-  }
-}, { deep: true });
-
-// 监听内部配置变化并通知父组件
 watch(buildConfig, (newVal) => {
   emits('update:config', newVal);
 }, { deep: true });

@@ -26,14 +26,14 @@
 
 <script lang="ts" setup>
 import axios from 'axios';
-import { ref, onMounted, defineEmits, watch } from 'vue';
+import { ref, onMounted, defineEmits, watch, nextTick } from 'vue';
+
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Environment } from '@/types/environment-manage';
 
 interface EnvironmentTreeNode extends Environment {
   children?: EnvironmentTreeNode[];
-  checked?: boolean;
 }
 const formProps = defineProps({
   config: {
@@ -107,9 +107,17 @@ onMounted(() => {
   componentId.value = typeof queryComponentId === 'string' ? queryComponentId : undefined;
   if (componentId.value) {
     fetchEnv(componentId.value);
-    setTimeout(() => {
-      deployStageConfig.value.selectedItems = collectSelectedEnvironments();
-    }, 0);
+    nextTick(() => {
+    const selectedItems = formProps.config.selectedItems || [];
+    deployStageConfig.value.selectedItems = selectedItems;
+    // 清空默认选中键
+    defaultCheckedKeys.value = [];
+    const checkedKeys = selectedItems.map((item: EnvironmentTreeNode) => item.id?.toString() || '');
+    defaultCheckedKeys.value = checkedKeys;
+      if (environmentTree.value) {
+        environmentTree.value.setCheckedKeys(checkedKeys);
+      }
+    });
   }
 });
 
@@ -118,15 +126,22 @@ const emits = defineEmits<{
   (e: 'update:config', config: { timeoutHours: number; selectedItems: EnvironmentTreeNode[] }): void
 }>();
 
-// 监听props.config变化，确保外部更新时能同步到内部状态
-watch(() => formProps.config, (newConfig) => {
-  if (newConfig) {
-    deployStageConfig.value = {
-      timeoutHours: newConfig.timeoutHours || 24,
-      selectedItems: newConfig.selectedItems || []
-    };
-  }
-}, { deep: true });
+watch(() => formProps.config, (newVal) => {
+  deployStageConfig.value.timeoutHours = newVal.timeoutHours || 24;
+  deployStageConfig.value.selectedItems = newVal.selectedItems || [];
+  // 使用nextTick确保treeData已经更新
+  nextTick(() => {
+    // 清空默认选中键
+    defaultCheckedKeys.value = [];
+    // 重新设置默认选中键
+    const checkedKeys = (newVal.selectedItems || []).map((item: EnvironmentTreeNode) => item.id?.toString() || '');
+    defaultCheckedKeys.value = checkedKeys;
+    // 使用setCheckedKeys方法设置当前选中节点
+    if (environmentTree.value) {
+      environmentTree.value.setCheckedKeys(checkedKeys);
+    }
+  });
+});
 
 // 监听内部配置变化并通知父组件
 watch(deployStageConfig, (newVal) => {

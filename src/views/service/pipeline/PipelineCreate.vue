@@ -198,6 +198,7 @@ const handleEditPielineAction = (stage_group_id: string) => {
 };
 
 function confirmEditPielineAction(data: Pipeline_stages[]) {
+
   // 创建或更新阶段组
   const groupId = currentEditGroupId.value || generateTempId();
   
@@ -406,6 +407,12 @@ const handlePielineSubmit = async () => {
       // 发送创建流水线的POST请求
       const response = await axios.post('/api/pipeline', resultTableData);
       emit('success', response.data);
+    // 清空流水线配置
+    pipelineGroupData.value = [
+      {
+        ...NewStage()
+      }
+    ]
       emit('cancel');
     }
   } catch (error) {
@@ -414,6 +421,12 @@ const handlePielineSubmit = async () => {
 };
 
 const handlePielineCancel = () => {
+  // 清空流水线配置
+  pipelineGroupData.value = [
+    {
+      ...NewStage()
+    }
+  ]
   emit('cancel');
 };
 

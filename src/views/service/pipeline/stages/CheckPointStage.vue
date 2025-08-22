@@ -39,16 +39,6 @@ const checkPointConfig = ref<{
   timeoutHours: formProps.config?.timeoutHours || 24
 });
 
-// 监听props.config变化，确保外部更新时能同步到内部状态
-watch(() => formProps.config, (newConfig) => {
-  if (newConfig) {
-    checkPointConfig.value = {
-      approver: newConfig.approver || '',
-      timeoutHours: newConfig.timeoutHours || 24
-    };
-  }
-}, { deep: true });
-
 // 监听内部配置变化并通知父组件
 watch(checkPointConfig, (newVal) => {
   emits('update:config', newVal);
