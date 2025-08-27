@@ -12,6 +12,10 @@ const instance = axios.create({
   }] as any
 });
 
+// 请求拦截器 - 添加token
+// 待补充
+
+
 // 响应拦截器
 instance.interceptors.response.use(
   response => {
