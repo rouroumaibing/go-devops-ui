@@ -44,14 +44,6 @@
           />
         </el-form-item>
         
-        <el-form-item prop="weibo">
-          <el-input
-            v-model="registerForm.weibo"
-            placeholder="请输入微博账号（选填）"
-            :prefix-icon="Message"
-          />
-        </el-form-item>
-        
         <el-form-item prop="qq">
           <el-input
             v-model="registerForm.qq"
@@ -127,10 +119,10 @@ const loading = ref(false);
 // 注册表单
 const registerForm = reactive({
   accountname: '',
+  accountgroup: '',
   nickname: '',
   email: '',
   phone: '',
-  weibo: '',
   qq: '',
   wechat: '',
   password: '',
@@ -148,14 +140,15 @@ const registerFormRules = ref<FormRules>({
   ],
   email: [
     { required: false, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    { 
+      pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 
+      message: '请输入正确的邮箱格式', 
+      trigger: 'blur' 
+    }
   ],
   phone: [
     { required: false, message: '请输入手机号码', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
-  ],
-  weibo: [
-    { required: false, message: '请输入微博账号', trigger: 'blur' }
   ],
   qq: [
     { required: false, message: '请输入QQ账号', trigger: 'blur' }
@@ -189,11 +182,11 @@ const handleRegister = async () => {
   
   const resultData: Users = {
     accountname: registerForm.accountname,
+    accountgroup: '',
     nickname: registerForm.nickname,
     email: registerForm.email,
     phone: registerForm.phone,
     password: registerForm.password,
-    weibo: registerForm.weibo,
     wechat: registerForm.wechat,
     qq: registerForm.qq,
   };

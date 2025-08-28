@@ -135,7 +135,7 @@ const handleSMSLogin = async () => {
     const response = await axios.post('/api/auth/login', {
       phone: smsForm.phone,
       sms_code: smsForm.smsCode,
-      login_type: 'sms'
+      method: 'sms'
     });
     ElMessage.success('登录成功');
     // 登录成功后跳转到首页

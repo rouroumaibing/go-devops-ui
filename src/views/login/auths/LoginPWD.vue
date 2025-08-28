@@ -54,7 +54,6 @@ import { User, Lock } from '@element-plus/icons-vue';
 import type { FormInstance, FormRules } from 'element-plus';
 import router from '@/router';
 import axios from '@/utils/axios';
-import { Users } from '@/types/usersinfo';
 
 // 表单引用
 const passwordFormRef = ref<FormInstance>();
@@ -85,15 +84,16 @@ const handlePasswordLogin = async () => {
   if (!valid) return;
   
   loading.value = true;
-
-  const requestData: Users = {
-    accountname: passwordForm.username,
-    password: passwordForm.password,
-  }
   try {
-    // 使用实际的登录API地址
-    const response = await axios.post('/api/auth/login', requestData);
+    const response = await axios.post('/api/auth/login', {
+      accountname: passwordForm.username,
+      password: passwordForm.password,
+      method: 'pwd'
+    });
     ElMessage.success('登录成功');
+
+    console.log("login:", response.data)
+     // sessionStorage.setItem('userId', response.data.id.toString());
 
     // 登录成功后跳转到首页
     router.replace('/dashboard');

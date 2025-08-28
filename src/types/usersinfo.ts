@@ -1,13 +1,13 @@
 export interface Users {
     id?: string;
     accountname: string;
+    accountgroup?: string;
     nickname?: string;
     age?: number;
     address?: string;
     password?: string;
     email?: string;
     phone?: string;
-    weibo?: string;
     wechat?: string;
     qq?: string;
     identitycard?: string;

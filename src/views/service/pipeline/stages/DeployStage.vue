@@ -32,6 +32,9 @@ import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Environment } from '@/types/environment-manage';
 
+
+// 待优化，返回参数只留环境id。
+
 interface EnvironmentTreeNode extends Environment {
   children?: EnvironmentTreeNode[];
 }
@@ -97,6 +100,7 @@ const collectSelectedEnvironments = (): EnvironmentTreeNode[] => {
   return [];
 };
 
+
 const handleCheckChange = () => {
   deployStageConfig.value.selectedItems = collectSelectedEnvironments();
 };
@@ -154,6 +158,7 @@ const generateDefaultEnvironmentTree = (): EnvironmentTreeNode[] => {
     {
       id: 1,
       name: 'Default',
+      is_prod: false,
       is_env: false,
       env_group: '',
       component_id: componentId.value || '',

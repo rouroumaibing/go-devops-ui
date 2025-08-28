@@ -36,7 +36,7 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>个人中心</el-dropdown-item>
+                <el-dropdown-item @click="showUserInfo">个人中心</el-dropdown-item>
                 <el-dropdown-item>退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -48,15 +48,37 @@
       </el-main>
     </el-container>
   </el-container>
+  
+  <!-- 用户信息抽屉 -->
+  <el-drawer
+    v-model="userInfoDrawerVisible"
+    title="个人信息"
+    size="50%"
+    direction="rtl"
+    :with-header="true"
+  >
+    <UserInfo :user-id="currentUserId" />
+  </el-drawer>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { HomeFilled, UserFilled, Menu, Setting } from '@element-plus/icons-vue'
+// 导入UserInfo组件
+import UserInfo from '@/views/user/UserInfo.vue'
 
 const isCollapse = ref(false)
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
+}
+
+const userInfoDrawerVisible = ref(false)
+
+const currentUserId = ref('1')
+
+// 打开用户信息抽屉
+const showUserInfo = () => {
+  userInfoDrawerVisible.value = true
 }
 </script>
 

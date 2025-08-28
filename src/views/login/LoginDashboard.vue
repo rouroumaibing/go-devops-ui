@@ -38,7 +38,6 @@
         <div class="third-party-buttons">
           <LoginQQ ref="loginQQRef" />
           <LoginWechat ref="loginWeChatRef" />
-          <LoginWeiBo ref="loginWeiBoRef" />
         </div>
       </div>
     </div>
@@ -51,7 +50,6 @@ import LoginPWD from './auths/LoginPWD.vue';
 import LoginSMS from './auths/LoginSMS.vue';
 import LoginQQ from './auths/LoginQQ.vue';
 import LoginWechat from './auths/LoginWechat.vue';
-import LoginWeiBo from './auths/LoginWeiBo.vue';
 
 // 登录方式状态
 const loginMethod = ref<'password' | 'sms'>('password');
@@ -61,7 +59,6 @@ const loginPWDRef = ref();
 const loginSMSRef = ref();
 const loginQQRef = ref();
 const loginWeChatRef = ref();
-const loginWeiBoRef = ref();
 
 // 切换到账号密码登录
 const switchToPasswordLogin = () => {
