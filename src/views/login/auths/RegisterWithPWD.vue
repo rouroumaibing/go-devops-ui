@@ -121,6 +121,7 @@ const registerForm = reactive({
   accountname: '',
   accountgroup: '',
   nickname: '',
+  head_img: '',
   email: '',
   phone: '',
   qq: '',
@@ -184,6 +185,7 @@ const handleRegister = async () => {
     accountname: registerForm.accountname,
     accountgroup: '',
     nickname: registerForm.nickname,
+    head_img: '',
     email: registerForm.email,
     phone: registerForm.phone,
     password: registerForm.password,
@@ -193,11 +195,9 @@ const handleRegister = async () => {
   
   loading.value = true;
   try {
-    // 使用实际的注册API地址，确保提交的字段与 Users 接口一致
     const response = await axios.post('/api/auth/register', resultData);
     
     ElMessage.success('注册成功，请登录');
-    // 注册成功后跳转到登录页面
     router.push('/login');
   } catch (error) {
     ElMessage.error('注册失败，请稍后重试');

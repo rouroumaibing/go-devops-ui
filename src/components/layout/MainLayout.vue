@@ -11,15 +11,23 @@
       >
         <el-menu-item index="/dashboard">
           <el-icon><HomeFilled /></el-icon>
-          <span>控制台</span>
+          <span>{{ $t('dashboard') }}</span>
         </el-menu-item>
         <el-menu-item index="/serviceTree">
           <el-icon><Setting /></el-icon>
-          <span>服务树管理</span>
+          <span>{{ $t('serviceTree') }}</span>
         </el-menu-item>
         <el-menu-item index="/user">
           <el-icon><UserFilled /></el-icon>
-          <span>用户管理</span>
+          <span>{{ $t('user') }}</span>
+        </el-menu-item>
+        <el-menu-item index="/apimanager">
+          <el-icon><Document /></el-icon>
+          <span>{{ $t('apiManager') }}</span>
+        </el-menu-item>
+        <el-menu-item index="/logmanager">
+          <el-icon><Bell /></el-icon>
+          <span>{{ $t('logManager') }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -29,15 +37,30 @@
           <el-icon @click="toggleCollapse"><Menu /></el-icon>
         </div>
         <div class="header-right">
-          <el-dropdown>
-            <span class="user-info">
-              <el-avatar>admin</el-avatar>
-              <span>管理员</span>
+          <!-- 语言切换按钮 -->
+          <el-dropdown trigger="click" @command="handleLangChange">
+            <span class="language-selector">
+              <el-icon><Flag /></el-icon>
+              <span>{{ currentLangText }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="showUserInfo">个人中心</el-dropdown-item>
-                <el-dropdown-item>退出登录</el-dropdown-item>
+                <el-dropdown-item command="zh">中文</el-dropdown-item>
+                <el-dropdown-item command="en">English</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          
+          <!-- 用户信息下拉菜单 -->
+          <el-dropdown>
+            <span class="user-info">
+              <el-avatar>{{ $t('admin').substring(0, 2) }}</el-avatar>
+              <span>{{ $t('admin') }}</span>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="showUserInfo">{{ $t('personalCenter') }}</el-dropdown-item>
+                <el-dropdown-item @click="handleLogout">{{ $t('logout') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -62,24 +85,64 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { HomeFilled, UserFilled, Menu, Setting } from '@element-plus/icons-vue'
-// 导入UserInfo组件
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { HomeFilled, UserFilled, Menu, Setting, Document, Bell, Flag } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 import UserInfo from '@/views/user/UserInfo.vue'
+import { setLocale } from '@/i18n'
+import { useLangStore } from '@/stores/lang'
+
+const router = useRouter()
+const { locale } = useI18n()
+const langStore = useLangStore()
 
 const isCollapse = ref(false)
+const userInfoDrawerVisible = ref(false)
+const currentUserId = ref('')
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
 
-const userInfoDrawerVisible = ref(false)
+// 获取当前语言的文本显示
+const currentLangText = computed(() => {
+  return locale.value === 'zh' ? '中文' : 'English'
+})
 
-const currentUserId = ref('1')
+// 处理语言切换
+const handleLangChange = (lang: 'zh' | 'en') => {
+  setLocale(lang)
+}
+
+const getUserIdFromStorage = () => {
+  const storedUserId = sessionStorage.getItem('userId');
+  if (storedUserId) {
+    currentUserId.value = storedUserId;
+  } else {
+    // 如果没有找到用户ID，重定向到登录页面
+    router.replace('/login');
+  }
+};
 
 // 打开用户信息抽屉
 const showUserInfo = () => {
-  userInfoDrawerVisible.value = true
+  if (!currentUserId.value) {
+    getUserIdFromStorage();
+  }
+  
+  if (currentUserId.value) {
+    userInfoDrawerVisible.value = true;
+  }
+};
+
+const handleLogout = () => {
+  sessionStorage.removeItem('userId');
+  router.replace('/login');
 }
+
+onMounted(() => {
+  getUserIdFromStorage();
+});
 </script>
 
 <style scoped>
@@ -113,5 +176,17 @@ const showUserInfo = () => {
 
 .user-info .el-avatar {
   margin-right: 8px;
+}
+
+.language-selector {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-right: 20px;
+  color: #333;
+}
+
+.language-selector .el-icon {
+  margin-right: 5px;
 }
 </style>

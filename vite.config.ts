@@ -7,6 +7,7 @@ import VueSetupExtend from 'vite-plugin-vue-setup-extend';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
 import path from 'path';
+import monacoEditorPlugin from 'vite-plugin-monaco-editor-esm';
 
 // 加载环境变量并配置Vite
 export default defineConfig(({ mode }) => {
@@ -29,6 +30,11 @@ export default defineConfig(({ mode }) => {
         algorithm: 'gzip',
         ext: '.gz',
         deleteOriginFile: false
+      }),
+      monacoEditorPlugin({
+        languageWorkers: ['editorWorkerService', 'json', 'html', 'css'],
+        customDistPath: (root, buildOutDir) =>
+          path.resolve(root, buildOutDir, 'monacoeditorwork')
       })
     ],
     resolve: {

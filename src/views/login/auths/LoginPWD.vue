@@ -48,12 +48,13 @@
 </template>
 
 <script setup lang="ts">
+import router from '@/router';
+import axios from '@/utils/axios';
 import { ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
-import type { FormInstance, FormRules } from 'element-plus';
-import router from '@/router';
-import axios from '@/utils/axios';
+import { FormInstance, FormRules } from 'element-plus';
+import { UserIDRespone } from '@/types/usersinfo';
 
 // 表单引用
 const passwordFormRef = ref<FormInstance>();
@@ -84,19 +85,23 @@ const handlePasswordLogin = async () => {
   if (!valid) return;
   
   loading.value = true;
+
+  const userIdData: UserIDRespone = { id: '' };
+  
   try {
     const response = await axios.post('/api/auth/login', {
       accountname: passwordForm.username,
       password: passwordForm.password,
       method: 'pwd'
     });
+
+    const userIdData = response.data as UserIDRespone;
+    sessionStorage.setItem('userId', userIdData.id);
+
     ElMessage.success('登录成功');
-
-    console.log("login:", response.data)
-     // sessionStorage.setItem('userId', response.data.id.toString());
-
-    // 登录成功后跳转到首页
+     // 登录成功后跳转到首页
     router.replace('/dashboard');
+
   } catch (error) {
     ElMessage.error('登录失败，请检查用户名和密码是否正确');
   } finally {

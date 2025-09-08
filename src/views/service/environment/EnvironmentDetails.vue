@@ -250,15 +250,10 @@ const handleEditEnvironment = () => {
     ElMessage.info(`编辑环境: ${props.environment.name}`);
     // 打开当前环境编辑表单
     editEnvironmentForm.value = {
-          id: props.environment.id,
           name: props.environment.name,
           is_prod: props.environment.is_prod || false,
-          is_env: props.environment.is_env || false,
           env_group: props.environment.env_group,
-          component_id: props.environment.component_id,
           description: props.environment.description || '',
-          created_at: props.environment.created_at,
-          updated_at: props.environment.updated_at,
           images_addr: props.environment.images_addr,
           images_user: props.environment.images_user,
           images_pwd: props.environment.images_pwd,

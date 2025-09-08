@@ -26,7 +26,9 @@ const routes: Array<RouteRecordRaw> = [
         { path: 'change', component: () => import('@/views/service/change/ChangeManage.vue'), meta: { title: '变更' }},
         { path: 'build', component: () => import('@/views/service/build/BuildManage.vue'), meta: { title: '构建' }},
         { path: 'product', component: () => import('@/views/service/product/ProductManage.vue'), meta: { title: '产物管理' }}]
-    }
+    },
+    { path: 'apimanager', component: () => import('@/views/apimanager/apimanager.vue'), meta: { title: 'API管理', icon: 'Document' }},
+    { path: 'logmanager', component: () => import('@/views/logmanager/logmanager.vue'), meta: { title: '日志管理', icon: 'Bell' }}
   ]}
 ]
 

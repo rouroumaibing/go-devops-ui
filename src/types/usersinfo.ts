@@ -3,6 +3,7 @@ export interface Users {
     accountname: string;
     accountgroup?: string;
     nickname?: string;
+    head_img?: string;
     age?: number;
     address?: string;
     password?: string;
@@ -13,4 +14,8 @@ export interface Users {
     identitycard?: string;
     created_at?: string;
     updated_at?: string;
+}
+
+export interface UserIDRespone {
+    id: string;
 }

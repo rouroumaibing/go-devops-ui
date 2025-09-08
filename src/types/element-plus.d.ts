@@ -29,6 +29,10 @@ declare module '@element-plus/icons-vue' {
   export const Lock: Component
   export const Phone: Component
   export const Message: Component
+  export const Loading: Component
+  export const Warning: Component
+  export const Bell: Component
+  export const Flag: Component
 }
 
 declare module '@element-plus/icons-vue/*' {

@@ -12,6 +12,7 @@ export interface Environment {
   kubernetes_addr?: string;
   kubeconfig?: string;
   kube_namespace?: string;
+  component_values?: string;
   created_at?: string;
   updated_at?: string;
 }

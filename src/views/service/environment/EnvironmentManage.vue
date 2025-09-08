@@ -114,6 +114,7 @@ const newNodeForm = ():EnvironmentTreeNode=> {
     kubernetes_addr: '',
     kubeconfig: '',
     kube_namespace: '',
+    component_values: '',
     children: []
   };
 };
