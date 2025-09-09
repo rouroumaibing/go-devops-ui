@@ -54,7 +54,7 @@ import { ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Phone, Message } from '@element-plus/icons-vue';
 import { FormInstance, FormRules } from 'element-plus';
-import { UserIDRespone } from '@/types/usersinfo';
+import { TokenRespone } from '@/types/usersinfo';
 
 // 表单引用
 const smsFormRef = ref<FormInstance>();
@@ -130,18 +130,18 @@ const handleSMSLogin = async () => {
   const valid = await smsFormRef.value?.validate();
   if (!valid) return;
 
-  const userIdData: UserIDRespone = { id: '' };
   loading.value = true;
   try {
     // 使用实际的短信登录API地址
-    const response = await axios.post('/api/auth/sms/login', {
+    const response = await axios.post<TokenRespone>('/api/auth/sms/login', {
       phone: smsForm.phone,
       sms_code: smsForm.smsCode,
-      method: 'sms'
     });
-    
-    const userIdData = response.data as UserIDRespone;
-    sessionStorage.setItem('userId', String(userIdData.id));
+  
+    const tokenData = response.data;
+    sessionStorage.setItem('userUUID', tokenData.userUUID);
+    sessionStorage.setItem('accessToken', tokenData.accessToken);
+    sessionStorage.setItem('refreshToken', tokenData.refreshToken);
 
     ElMessage.success('登录成功');
     // 登录成功后跳转到首页

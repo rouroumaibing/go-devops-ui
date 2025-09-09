@@ -91,11 +91,9 @@ import { HomeFilled, UserFilled, Menu, Setting, Document, Bell, Flag } from '@el
 import { useRouter } from 'vue-router'
 import UserInfo from '@/views/user/UserInfo.vue'
 import { setLocale } from '@/i18n'
-import { useLangStore } from '@/stores/lang'
 
 const router = useRouter()
 const { locale } = useI18n()
-const langStore = useLangStore()
 
 const isCollapse = ref(false)
 const userInfoDrawerVisible = ref(false)
@@ -115,7 +113,7 @@ const handleLangChange = (lang: 'zh' | 'en') => {
 }
 
 const getUserIdFromStorage = () => {
-  const storedUserId = sessionStorage.getItem('userId');
+  const storedUserId = sessionStorage.getItem('userUUID');
   if (storedUserId) {
     currentUserId.value = storedUserId;
   } else {

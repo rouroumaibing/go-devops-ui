@@ -13,7 +13,7 @@
         <el-row v-else class="layout-container">
           <el-col :span="6" class="left-panel">
             <el-tree-v2 
-              style="max-width: 600px"
+              style="max-width: 500px"
               :data="pipelineTreeData"
               :props="treeProps"
               :height="300"
@@ -26,7 +26,6 @@
           <!-- 右侧任务管理区域 -->
           <el-col :span="18" class="right-panel">
             <el-table v-if="selectedPipeline" :data="[selectedPipeline]" border stripe>
-              <el-table-column type="index" label="序号" width="80"></el-table-column>
               <el-table-column prop="name" label="流水线名称" width="180"></el-table-column>
               <el-table-column prop="pipeline_group" label="流水线分组" width="180"></el-table-column>
               <el-table-column prop="component_id" label="所属组件" width="180"></el-table-column>
@@ -40,6 +39,8 @@
                 <template #default="scope">
                   <el-button type="primary" size="small" @click="handleRun(scope.row)">运行</el-button>
                   <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
+                  <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
+                  <el-button type="primary" size="small" icon="Refresh" @click="handleRefresh(scope.row)"></el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -187,6 +188,30 @@ const fetchPipelines = async (componentId: string) => {
     loading.value = false;
   }
 };
+
+const handleDelete = async (pipeline: Pipeline) => {
+  try {
+    await axios.delete(`/api/pipeline/${pipeline.id}`);
+    ElMessage.success('流水线删除成功');
+    if (componentId.value) {
+      pipelineList.value = await fetchPipelines(componentId.value);
+    }
+  } catch (err) {
+    ElMessage.error('流水线删除失败');
+  }
+}
+
+const handleRefresh = async (pipeline: Pipeline) => {
+  try {
+    // await axios.get(`/api/pipeline/${pipeline.id}`);
+    // ElMessage.success('流水线刷新成功');
+    if (componentId.value) {
+      pipelineList.value = await fetchPipelines(componentId.value);
+    }
+  } catch (err) {
+    ElMessage.error('流水线刷新失败');
+  }
+}
 
 onMounted(async () => {
   const queryComponentId = router.query.componentId;

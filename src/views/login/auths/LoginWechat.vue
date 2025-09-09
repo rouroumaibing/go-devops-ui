@@ -37,10 +37,12 @@ import { ElMessage } from 'element-plus';
 import { Icon } from '@iconify/vue';
 import router from '@/router';
 import axios from '@/utils/axios';
+import { TokenRespone } from '@/types/usersinfo';
 
 const dialogVisible = ref(false);
 const qrCodeState = ref('');
 let wxLoginInstance: any = null;
+let checkInterval: number | null = null;
 const WECHAT_APPID = import.meta.env.VITE_WECHAT_APPID || '';
 const WECHAT_REDIRECTURI = import.meta.env.VITE_WECHAT_REDIRECTURI || '';
 
@@ -58,6 +60,8 @@ const closeDialog = () => {
   dialogVisible.value = false;
   // 清理二维码
   cleanWechatLogin();
+  // 清理定时器
+  cleanupInterval();
 };
 
 // 初始化微信登录
@@ -79,7 +83,6 @@ const initWechatLogin = () => {
     id: 'login_container',
     appid: WECHAT_APPID,
     scope: 'snsapi_login',
-    // 确保redirect_uri已经正确编码
     redirect_uri: encodeURIComponent(WECHAT_REDIRECTURI),
     state: state,
     style: 'black',
@@ -100,10 +103,8 @@ const initWechatLogin = () => {
   checkWechatAuthCallback();
 };
 
-// 加载微信登录JS脚本
 const loadWechatLoginScript = () => {
   const script = document.createElement('script');
-  // 使用HTTPS协议确保安全性
   script.src = 'https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js';
   script.onload = () => {
     initWechatLogin();
@@ -122,6 +123,14 @@ const cleanWechatLogin = () => {
   }
   wxLoginInstance = null;
   qrCodeState.value = '';
+};
+
+// 清理定时器
+const cleanupInterval = () => {
+  if (checkInterval !== null) {
+    clearInterval(checkInterval);
+    checkInterval = null;
+  }
 };
 
 // 生成随机字符串
@@ -156,21 +165,20 @@ const handleWechatAuthCallback = async (code: string, state?: string) => {
     }
     
     // 发送code到后端进行验证和登录处理
-    const response = await axios.post('/api/auth/wechat/callback', { code });
-    
-    if (response.data) {
-      ElMessage.success('微信登录成功');
-      dialogVisible.value = false;
-      // 登录成功后跳转到dashboard
-      router.replace('/dashboard');
-    } else {
-      ElMessage.error('微信登录失败');
-    }
+    const response = await axios.post<TokenRespone>('/api/auth/wechat/callback', { code });
+    const tokenData = response.data;
+    sessionStorage.setItem('userUUID', tokenData.userUUID);
+    sessionStorage.setItem('accessToken', tokenData.accessToken);
+    sessionStorage.setItem('refreshToken', tokenData.refreshToken);
+    dialogVisible.value = false;
+    router.replace('/dashboard');
   } catch (error) {
     console.error('微信登录出错:', error);
     ElMessage.error('微信登录失败，请重试');
   } finally {
-    // 清理URL中的code参数，防止刷新页面重复处理
+    // 清理定时器
+    cleanupInterval();
+    
     if (window.history.replaceState) {
       const urlParams = new URLSearchParams(window.location.search);
       urlParams.delete('code');
@@ -184,33 +192,16 @@ const handleWechatAuthCallback = async (code: string, state?: string) => {
 // 设置URL变化监听器，用于处理内嵌二维码的授权回调
 const setupUrlChangeListener = () => {
   // 使用定时器轮询检测URL变化
-  const checkInterval = setInterval(() => {
+  checkInterval = window.setInterval(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
     
     if (code) {
-      clearInterval(checkInterval);
+      cleanupInterval();
       handleWechatAuthCallback(code, state || '');
     }
   }, 1000);
-  
-  // 清理定时器
-  const cleanup = () => {
-    clearInterval(checkInterval);
-  };
-  
-  // 组件卸载时清理定时器
-  onUnmounted(() => {
-    cleanup();
-  });
-  
-  // 关闭弹窗时清理定时器
-  const originalCloseDialog = closeDialog;
-  Object.assign(closeDialog, () => {
-    originalCloseDialog();
-    cleanup();
-  });
 };
 
 // 处理微信登录 - 定义为普通函数，供父组件调用
@@ -226,6 +217,7 @@ defineExpose({
 // 组件卸载时清理资源
 onUnmounted(() => {
   cleanWechatLogin();
+  cleanupInterval();
 });
 </script>
 

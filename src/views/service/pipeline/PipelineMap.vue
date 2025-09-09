@@ -1,4 +1,3 @@
-
 <template>
     <div class="pipeline-container">
         <div class="stage-box">
@@ -35,7 +34,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Pipeline_stages } from '@/types/pipeline';
+import { Pipeline_stages, Pipeline_job } from '@/types/pipeline';
 
 //接收参数
 const props = defineProps<{

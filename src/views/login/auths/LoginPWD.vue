@@ -24,6 +24,7 @@
     </el-form-item>
     
     <el-form-item class="remember-forgot">
+      <el-checkbox v-model="passwordForm.rememberMe">记住我</el-checkbox>
       <div class="forgot-register">
         <el-link type="primary" :underline="false" @click="handleForgotPassword">
           忘记密码？
@@ -54,7 +55,7 @@ import { ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 import { FormInstance, FormRules } from 'element-plus';
-import { UserIDRespone } from '@/types/usersinfo';
+import { TokenRespone } from '@/types/usersinfo';
 
 // 表单引用
 const passwordFormRef = ref<FormInstance>();
@@ -65,7 +66,8 @@ const loading = ref(false);
 // 账号密码登录表单
 const passwordForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  rememberMe: false
 });
 
 // 账号密码表单验证规则
@@ -85,19 +87,24 @@ const handlePasswordLogin = async () => {
   if (!valid) return;
   
   loading.value = true;
-
-  const userIdData: UserIDRespone = { id: '' };
   
   try {
-    const response = await axios.post('/api/auth/login', {
+    const response = await axios.post<TokenRespone>('/api/auth/login', {
       accountname: passwordForm.username,
       password: passwordForm.password,
-      method: 'pwd'
     });
 
-    const userIdData = response.data as UserIDRespone;
-    sessionStorage.setItem('userId', userIdData.id);
-
+    const tokenData = response.data;
+    
+    // 根据用户选择的记住我状态决定存储位置
+    const storage = passwordForm.rememberMe ? localStorage : sessionStorage;
+    
+    // 存储 token 和记住我状态
+    storage.setItem('userUUID', tokenData.userUUID);
+    storage.setItem('accessToken', tokenData.accessToken);
+    storage.setItem('refreshToken', tokenData.refreshToken);
+    localStorage.setItem('rememberMe', passwordForm.rememberMe.toString());
+    
     ElMessage.success('登录成功');
      // 登录成功后跳转到首页
     router.replace('/dashboard');

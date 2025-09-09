@@ -16,6 +16,8 @@ export interface Users {
     updated_at?: string;
 }
 
-export interface UserIDRespone {
-    id: string;
+export interface TokenRespone {
+    userUUID: string;
+    accessToken: string;
+    refreshToken: string;
 }

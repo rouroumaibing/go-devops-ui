@@ -33,6 +33,7 @@ declare module '@element-plus/icons-vue' {
   export const Warning: Component
   export const Bell: Component
   export const Flag: Component
+  export const Refresh: Component
 }
 
 declare module '@element-plus/icons-vue/*' {

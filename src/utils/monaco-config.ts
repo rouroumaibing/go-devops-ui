@@ -52,9 +52,19 @@ export const configureMonacoEnvironment = () => {
     const originalAddEventListener = Element.prototype.addEventListener;
     Element.prototype.addEventListener = function (type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) {
       const passiveEventTypes = ['touchstart', 'touchmove', 'wheel', 'mousewheel', 'DOMMouseScroll'];
-      if (passiveEventTypes.includes(type) && typeof options === 'object' && options !== null) {
-        const modifiedOptions = { ...options, passive: true };
-        originalAddEventListener.call(this, type, listener, modifiedOptions);
+      
+      // Always use passive: true for the specified event types
+      if (passiveEventTypes.includes(type)) {
+        if (typeof options === 'boolean') {
+          // If options is a boolean (useCapture), convert to object with passive: true
+          originalAddEventListener.call(this, type, listener, { capture: options, passive: true });
+        } else {
+          // If options is object or undefined, ensure passive is true
+          originalAddEventListener.call(this, type, listener, {
+            ...(typeof options === 'object' ? options : {}),
+            passive: true
+          });
+        }
       } else {
         originalAddEventListener.call(this, type, listener, options);
       }
