@@ -353,7 +353,9 @@ const addJob = (job: Pipeline_stages): void => {
       parallel: false,
       stage_order: index + 1,
       job_type: '', 
-      pipeline_job: {}
+      pipeline_job: {
+        status: 'wait'
+      }
     };
     
     menuData.splice(index + 1, 0, newJob);
@@ -390,7 +392,9 @@ const deleteJob = (node: Pipeline_stages): void => {
           stage_order: 0,
           stage_name: '新建任务',
           parallel: false,
-          pipeline_job: {}
+          pipeline_job: {
+            status: 'wait'
+          }
         }];
       } else {
         updateStageOrders();

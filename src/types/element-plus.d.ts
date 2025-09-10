@@ -34,6 +34,8 @@ declare module '@element-plus/icons-vue' {
   export const Bell: Component
   export const Flag: Component
   export const Refresh: Component
+  export const ArrowRight: Component
+  
 }
 
 declare module '@element-plus/icons-vue/*' {

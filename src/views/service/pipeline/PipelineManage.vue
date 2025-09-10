@@ -40,7 +40,6 @@
                   <el-button type="primary" size="small" @click="handleRun(scope.row)">运行</el-button>
                   <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
                   <el-button type="danger" size="small" @click="handleDelete(scope.row)">删除</el-button>
-                  <el-button type="primary" size="small" icon="Refresh" @click="handleRefresh(scope.row)"></el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -81,7 +80,8 @@ import { ElMessage } from 'element-plus';
 import { useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
-import PipelineMap from './PipelineMap.vue';
+//import PipelineMap from './PipelineMap.vue';
+import PipelineMap from './PipelineRunMap.vue';
 
 import { Pipeline } from '@/types/pipeline';
 
@@ -198,18 +198,6 @@ const handleDelete = async (pipeline: Pipeline) => {
     }
   } catch (err) {
     ElMessage.error('流水线删除失败');
-  }
-}
-
-const handleRefresh = async (pipeline: Pipeline) => {
-  try {
-    // await axios.get(`/api/pipeline/${pipeline.id}`);
-    // ElMessage.success('流水线刷新成功');
-    if (componentId.value) {
-      pipelineList.value = await fetchPipelines(componentId.value);
-    }
-  } catch (err) {
-    ElMessage.error('流水线刷新失败');
   }
 }
 
