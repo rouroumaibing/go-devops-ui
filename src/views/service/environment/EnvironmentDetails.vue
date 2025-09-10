@@ -150,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios';
+import axios from '@/utils/axios';
 import { ref, defineProps, defineEmits } from 'vue';
 import { ElMessage, ElMessageBox, ElInput, ElButton, ElForm, ElFormItem, ElSwitch, ElUpload } from 'element-plus';
 import { Check, Close } from '@element-plus/icons-vue';

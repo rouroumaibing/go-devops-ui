@@ -75,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios';
+import axios from '@/utils/axios';
 import { ref, onMounted, watch, computed, reactive, toRefs } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useRoute } from 'vue-router';

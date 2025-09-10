@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import axios from '@/utils/axios';
 import { ElMessage } from 'element-plus';
 import { Users } from '@/types/usersinfo';
 

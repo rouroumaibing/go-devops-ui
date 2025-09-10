@@ -69,13 +69,12 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios';
+import axios from '@/utils/axios';
 import { ref, onMounted, onBeforeUnmount, reactive, toRefs } from 'vue';
 import { ElMessage, ElTreeV2, ElInput, ElButton, ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElCard } from 'element-plus';
 import { useRoute } from 'vue-router';
 import type { TreeNodeData, TreeInstance, FormInstance } from 'element-plus';
 import { Environment } from '@/types/environment-manage';
-// 引入新的EnvironmentDetails组件
 import EnvironmentDetails from './EnvironmentDetails.vue';
 
 interface EnvironmentTreeNode extends Environment, TreeNodeData {};

@@ -62,7 +62,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, defineEmits, defineProps, computed } from 'vue';
-import axios from 'axios';
+import axios from '@/utils/axios';
 import { FormInstance, FormRules, ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Operation, Edit, CopyDocument, Delete, DArrowLeft, DArrowRight } from '@element-plus/icons-vue';
 

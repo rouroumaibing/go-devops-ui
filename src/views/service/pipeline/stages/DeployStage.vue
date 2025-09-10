@@ -25,7 +25,7 @@
 </template>
 
 <script lang="ts" setup>
-import axios from 'axios';
+import axios from '@/utils/axios';
 import { ref, onMounted, defineEmits, watch, nextTick } from 'vue';
 
 import { useRoute } from 'vue-router';
@@ -162,8 +162,14 @@ const generateDefaultEnvironmentTree = (): EnvironmentTreeNode[] => {
       is_env: false,
       env_group: '',
       component_id: componentId.value || '',
-      service_addr: '',
       description: '',
+      images_addr: '',
+      images_user: '',
+      images_pwd: '',
+      kubernetes_addr: '',
+      kubeconfig: '',
+      kube_namespace: '',
+      component_values: '',
       created_at: "",
       updated_at: "",
       children: []
