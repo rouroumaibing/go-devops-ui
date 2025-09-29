@@ -13,7 +13,7 @@
         <div class="tree-container" ref="treeContainer"
              v-loading="loading" element-loading-text="加载中..." element-loading-background="rgba(255, 255, 255, 0.8)">
           <el-tree-v2
-            :style="{ height: treeHeight + 'px' }"
+            class="full-height-tree"
             ref="treeRef"
             :data="treeData"
             :props="{ value: 'id', label: 'name', children: 'children' }"
@@ -143,27 +143,21 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, reactive, toRefs,  onBeforeUnmount, ComponentPublicInstance, nextTick } from 'vue'
+import { ref, onMounted, reactive, toRefs, ComponentPublicInstance } from 'vue'
 import axios from '@/utils/axios'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElTreeV2, TreeNodeData, ElInput, ElButton, ElIcon, ElEmpty,  ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElDivider, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
-import { ServiceTree, Component } from '@/types/servicetree'
+import { ElTreeV2, TreeNodeData, ElInput, ElButton, ElIcon, ElEmpty,  ElDialog, ElForm, ElFormItem, ElRadioGroup, ElRadio, ElMain, ElAside, ElContainer, ElRow, ElCol, ElCard, ElDescriptions, ElDescriptionsItem, ElLink } from 'element-plus'
+import { ServiceTree } from '@/types/servicetree'
+import { Component } from '@/types/component-manage'
 
 
 const treeRef = ref<ComponentPublicInstance<typeof ElTreeV2, { data: ServiceTree[] }>>()
 const addNodeFormRef = ref<ComponentPublicInstance<typeof ElForm>>()
 const treeContainer = ref<HTMLDivElement | null>(null)
-const treeHeight = ref(0)
 const router = useRouter()
 const route = useRoute()
-
-const updateTreeHeight = () => {
-  if (treeContainer.value) {
-    treeHeight.value = treeContainer.value.offsetHeight - 16
-  }
-}
 
 const state = reactive({
   query: '',
@@ -185,7 +179,6 @@ const fetchServiceTree = async () => {
     if (treeData.value.length === 0) {
       treeData.value = generateDefaultTree();
     }
-
   } catch (error) {
     ElMessage.error('Failed to fetch service tree, please try again');
     treeData.value = generateDefaultTree();
@@ -209,7 +202,6 @@ const fetchComponentDetail = async (id: string) => {
 
 // 搜索过滤逻辑
 const onQueryChanged = (query: string) => {
-  // 添加延迟以避免频繁过滤，同时确保treeRef已初始化
   setTimeout(() => {
     treeRef.value?.filter(query);
   }, 100);
@@ -226,8 +218,8 @@ const filterMethod = (query: string, node: TreeNodeData) => {
 // 节点点击处理
 const handleNodeClick = async (data: ServiceTree) => {
     if (data.node_type === 'service' && data.service_id) {
-    const componentDetail = await fetchComponentDetail(data.service_id);
-  }
+      const componentDetail = await fetchComponentDetail(data.service_id);
+    }
 }
 
 const goToComponentPage = () => {
@@ -321,7 +313,7 @@ const addChildNode = async () => {
         ElMessage.error('添加组件失败: HTTP状态码' + response.status)
         return
       }
-      newNodeData.service_id = response.data.id
+      newNodeData.service_id = String(response.data.id)
     }
     // 发送POST请求到/api/servicetree
     await axios.post('/api/servicetree', newNodeData, {
@@ -346,16 +338,6 @@ const addChildNode = async () => {
 // 页面加载时获取数据
 onMounted(() => {
   fetchServiceTree()
-  
-  nextTick(() => {
-    updateTreeHeight()
-  })
-  // 监听窗口大小变化
-  window.addEventListener('resize', updateTreeHeight)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', updateTreeHeight)
 })
 
 const generateDefaultTree = (): ServiceTree[] => [
@@ -398,15 +380,17 @@ const generateDefaultTree = (): ServiceTree[] => [
 
 <style scoped lang="scss">
 .service-tree-container {
-  height: 100vh;
+  height: 100%;
+  display: flex;
   overflow: hidden;
-  margin: 0;
-  padding: 0;
+  flex-direction: column;
 }
 
 .main-container {
+  flex: 1;
   height: 100%;
   display: flex;
+  overflow: hidden; 
 }
 
 .tree-aside {
@@ -415,16 +399,41 @@ const generateDefaultTree = (): ServiceTree[] => [
   padding: 16px;
   display: flex;
   flex-direction: column;
-  height: 100vh; 
-  box-sizing: border-box;
+  height: 100%; 
+}
+
+.tree-aside .el-input {
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.full-height-tree {
+  flex: 1;
+  height: 100%;
+}
+
+.full-height-tree :deep(.el-tree-virtual-list),
+.full-height-tree :deep(.el-tree-v2) {
+  height: 100% !important;
+  width: 100% !important;
 }
 
 .tree-container {
   flex: 1;
+  margin-top: 8px;
   overflow: auto;
-  margin-top: 16px;
-  background-color: white;
-  padding: 0 8px;
+  white-space: nowrap;
+  min-height: 0; 
+}
+.tree-container .el-vl__window.el-tree-virtual-list {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.el-tree-v2 {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .detail-panel {
@@ -473,7 +482,7 @@ const generateDefaultTree = (): ServiceTree[] => [
 .el-tree-node:hover .add-node-btn {
   opacity: 1;
 }
-/* 添加编辑图标样式 */
+
 .edit-icon {
   margin-left: 8px;
   color: #409eff;

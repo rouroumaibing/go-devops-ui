@@ -48,28 +48,7 @@ export const configureMonacoEnvironment = () => {
 
     // 设置编辑器全局选项
     monaco.editor.setTheme('vs-dark');
-
-    const originalAddEventListener = Element.prototype.addEventListener;
-    Element.prototype.addEventListener = function (type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) {
-      const passiveEventTypes = ['touchstart', 'touchmove', 'wheel', 'mousewheel', 'DOMMouseScroll'];
-      
-      // Always use passive: true for the specified event types
-      if (passiveEventTypes.includes(type)) {
-        if (typeof options === 'boolean') {
-          // If options is a boolean (useCapture), convert to object with passive: true
-          originalAddEventListener.call(this, type, listener, { capture: options, passive: true });
-        } else {
-          // If options is object or undefined, ensure passive is true
-          originalAddEventListener.call(this, type, listener, {
-            ...(typeof options === 'object' ? options : {}),
-            passive: true
-          });
-        }
-      } else {
-        originalAddEventListener.call(this, type, listener, options);
-      }
-    };
-
+  
   } catch (error) {
     console.error('配置Monaco编辑器失败:', error);
   }

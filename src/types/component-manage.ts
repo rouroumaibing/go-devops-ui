@@ -9,3 +9,12 @@ export interface Component {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface ComponentParameter {
+  id?: number;
+  component_id: string;
+  environment_id: string;
+  param_yaml: string;
+  created_at?: string;
+  updated_at?: string;
+}

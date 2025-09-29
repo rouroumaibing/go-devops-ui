@@ -125,10 +125,7 @@ const NewStage = (): Pipeline_stages => {
     parallel: false,
     stage_order: 1,
     job_type: '', 
-    pipeline_job: {
-      parameters: '{}',
-      status: 'wait'
-    }
+    parameters: '',
   };
 };
 

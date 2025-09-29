@@ -12,15 +12,12 @@
 
         <el-row v-else class="layout-container">
           <el-col :span="6" class="left-panel">
-            <el-tree-v2 
-              style="max-width: 500px"
-              :data="pipelineTreeData"
-              :props="treeProps"
-              :height="300"
-              node-key="id"
-              @node-click="handlePipelineNodeClick"
-
-            />
+              <el-tree-v2
+                :data="pipelineTreeData"
+                :props="treeProps"
+                node-key="id"
+                @node-click="handlePipelineNodeClick"
+              />
           </el-col>
 
           <!-- 右侧任务管理区域 -->
@@ -75,7 +72,7 @@
 
 <script setup lang="ts">
 import axios from '@/utils/axios';
-import { ref, onMounted, watch, computed, reactive, toRefs } from 'vue';
+import { ref, onMounted, watch, computed, reactive, toRefs } from 'vue';  
 import { ElMessage } from 'element-plus';
 import { useRoute } from 'vue-router';
 
@@ -84,7 +81,6 @@ import PipelineCreate from './PipelineCreate.vue';
 import PipelineMap from './PipelineRunMap.vue';
 
 import { Pipeline } from '@/types/pipeline';
-
 
 const state = reactive({
   pipelineDetail: null as Pipeline | null,
@@ -150,13 +146,28 @@ const enterCreateMode = () => {
 };
 
 const handleEdit = (pipeline: Pipeline) => {
-  console.log('编辑流水线:', pipeline);
-  // router.push(`/pipeline/edit/${pipeline.id}`);
+  try {
+    axios.put(`/pipeline/edit/${pipeline.id}`, pipeline).then(res => {
+      ElMessage.success('流水线编辑成功');
+    }).catch(err => {
+      ElMessage.error('流水线编辑失败');
+    });
+  } catch (error) {
+    ElMessage.error('流水线编辑失败');
+  }
 };
 
-const handleRun = (pipeline: Pipeline) => {
-  console.log('运行流水线:', pipeline);
-  // router.push(`/pipeline/run/${pipeline.id}`);
+const handleRun = async (pipeline: Pipeline) => {
+  try {
+    const response = await axios.post(`/api/pipeline/${pipeline.id}/job`, pipeline);
+    
+    // Show success message
+    ElMessage.success('流水线已开始运行');
+    
+  } catch (error) {
+    console.error('运行流水线失败:', error);
+    ElMessage.error('运行流水线失败，请重试');
+  }
 };
 
 // 处理节点点击事件
@@ -199,7 +210,7 @@ const handleDelete = async (pipeline: Pipeline) => {
   } catch (err) {
     ElMessage.error('流水线删除失败');
   }
-}
+};
 
 onMounted(async () => {
   const queryComponentId = router.query.componentId;
@@ -216,126 +227,83 @@ watch(
   }
 );
 
-const generateDefaultPipeline = (): Pipeline[] =>[
-{
-  "id": "0000-0000-0123",
-  "name": "流水线1",
-  "pipeline_group": "未分组",
-  "component_id": "a4f44f30-43e3-4e42-8167-373e2f8da001",
-  "service_tree": "app/push-server",
-  "created_at": "2025-07-15 10:30",
-  "updated_at": "2025-07-15 10:30",
-  "pipeline_stages": [{
-        "id": "000-0000-0000",
-        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
-        "stage_group_name": "构建",
-        "stage_group_order": 1,
-        "stage_type": "build",
-        "stage_name": "构建任务",
-        "parallel": false,
-        "stage_order": 1,
-        "pipeline_id": "0000-0000-0123",
-        "created_at": "2025-07-15 10:30",
-        "updated_at": "2025-07-15 10:30",
-        "pipeline_job" :{
-            "id": "000-0000-0000-1111",
-            "pipeline_id": "0000-0000-0123",
-            "stage_id": "000-0000-0000",
-            "parameters": "go build",
-            "status": "success",
-            "created_at": "2025-07-15 10:30",
-            "updated_at": "2025-07-15 10:30",
-        }
-    },{
-        "id": "000-0000-0001",
-        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
-        "stage_group_name": "构建",
-        "stage_group_order": 1,
-        "stage_type": "build",
-        "stage_name": "静态检查",
-        "parallel": false,
-        "stage_order": 2,
-        "pipeline_id": "0000-0000-0123",
-        "created_at": "2025-07-15 10:30",
-        "updated_at": "2025-07-15 10:30",
-        "pipeline_job" :{
-            "id": "000-0000-0000-1112",
-            "pipeline_id": "0000-0000-0123",
-            "stage_id": "000-0000-0001",
-            "parameters": "go build",
-            "status": "success",
-            "created_at": "2025-07-15 10:30",
-            "updated_at": "2025-07-15 10:30",
-        }
+const generateDefaultPipeline = (): Pipeline[] => [
+  {
+    "id": "0000-0000-0123",
+    "name": "流水线1",
+    "pipeline_group": "未分组",
+    "component_id": "a4f44f30-43e3-4e42-8167-373e2f8da001",
+    "service_tree": "app/push-server",
+    "created_at": "2025-07-15 10:30",
+    "updated_at": "2025-07-15 10:30",
+    "pipeline_stages": [{
+          "id": "000-0000-0000",
+          "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
+          "stage_group_name": "构建",
+          "stage_group_order": 1,
+          "stage_type": "build",
+          "stage_name": "构建任务",
+          "parallel": false,
+          "stage_order": 1,
+          "pipeline_id": "0000-0000-0123",
+          "created_at": "2025-07-15 10:30",
+          "updated_at": "2025-07-15 10:30",
+          "parameters": '',
       },{
-        "id": "000-0000-0003",
-        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx02",
-        "stage_group_name": "卡点",
-        "stage_group_order": 2,
-        "stage_type": "checkpoint",
-        "stage_name": "人工卡点",
-        "parallel": false,
-        "stage_order": 1,
-        "pipeline_id": "0000-0000-0123",
-        "created_at": "2025-07-15 10:30",
-        "updated_at": "2025-07-15 10:30",
-        "pipeline_job" :{
-            "id": "000-0000-0000-1114",
-            "pipeline_id": "0000-0000-0123",
-            "stage_id": "000-0000-0003",
-            "parameters": "kakakaka",
-            "status": "success",
-            "created_at": "2025-07-15 10:30",
-            "updated_at": "2025-07-15 10:30",
-        }
-      },{
-        "id": "000-0000-0004",
-        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
-        "stage_group_name": "部署",
-        "stage_group_order": 3,
-        "stage_type": "deploy",
-        "stage_name": "部署环境",
-        "parallel": false,
-        "stage_order": 1,
-        "pipeline_id": "0000-0000-0123",
-        "created_at": "2025-07-15 10:30",
-        "updated_at": "2025-07-15 10:30",
-        "pipeline_job" :{
-            "id": "000-0000-0000-1115",
-            "pipeline_id": "0000-0000-0123",
-            "stage_id": "000-0000-0004",
-            "parameters": "go deploy",
-            "status": "failed",
-            "created_at": "2025-07-15 10:30",
-            "updated_at": "2025-07-15 10:30",
-        }
-      },{
-        "id": "000-0000-0006",
-        "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx04",
-        "stage_group_name": "测试",
-        "stage_group_order": 4,
-        "stage_type": "test",
-        "stage_name": "测试任务",
-        "parallel": false,
-        "stage_order": 1,
-        "pipeline_id": "0000-0000-0123",
-        "created_at": "2025-07-15 10:30",
-        "updated_at": "2025-07-15 10:30",
-        "pipeline_job" :{
-            "id": "000-0000-0000-1117",
-            "pipeline_id": "0000-0000-0123",
-            "stage_id": "000-0000-0006",
-            "parameters": "go test",
-            "status": "pending",
-            "created_at": "2025-07-15 10:30",
-            "updated_at": "2025-07-15 10:30",
-        }
-      },
-    ]}
-    ]
-
-
-
+          "id": "000-0000-0001",
+          "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx01",
+          "stage_group_name": "构建",
+          "stage_group_order": 1,
+          "stage_type": "build",
+          "stage_name": "静态检查",
+          "parallel": false,
+          "stage_order": 2,
+          "pipeline_id": "0000-0000-0123",
+          "created_at": "2025-07-15 10:30",
+          "updated_at": "2025-07-15 10:30",
+          "parameters": '',
+        },{
+          "id": "000-0000-0003",
+          "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx02",
+          "stage_group_name": "卡点",
+          "stage_group_order": 2,
+          "stage_type": "checkpoint",
+          "stage_name": "人工卡点",
+          "parallel": false,
+          "stage_order": 1,
+          "pipeline_id": "0000-0000-0123",
+          "created_at": "2025-07-15 10:30",
+          "updated_at": "2025-07-15 10:30",
+          "parameters": '',
+        },{
+          "id": "000-0000-0004",
+          "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx03",
+          "stage_group_name": "部署",
+          "stage_group_order": 3,
+          "stage_type": "deploy",
+          "stage_name": "部署环境",
+          "parallel": false,
+          "stage_order": 1,
+          "pipeline_id": "0000-0000-0123",
+          "created_at": "2025-07-15 10:30",
+          "updated_at": "2025-07-15 10:30",
+          "parameters": '',
+        },{
+          "id": "000-0000-0006",
+          "stage_group_id": "xxxx-xxx-xxxx-xxxx-xxxxx04",
+          "stage_group_name": "测试",
+          "stage_group_order": 4,
+          "stage_type": "test",
+          "stage_name": "测试任务",
+          "parallel": false,
+          "stage_order": 1,
+          "pipeline_id": "0000-0000-0123",
+          "created_at": "2025-07-15 10:30",
+          "updated_at": "2025-07-15 10:30",
+          "parameters": '',
+        },
+      ]}
+    ];
 </script>
 
 <style scoped>
@@ -354,6 +322,7 @@ const generateDefaultPipeline = (): Pipeline[] =>[
 }
 .form-actions { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; }
 
+
 .advanced-options-title {
   font-size: 16px;
   font-weight: bold;
@@ -367,7 +336,6 @@ const generateDefaultPipeline = (): Pipeline[] =>[
   overflow-x: auto;
   padding: 10px 0;
 }
-
 
 .main-steps {
   min-width: 0px;
@@ -384,6 +352,8 @@ const generateDefaultPipeline = (): Pipeline[] =>[
 
 .el-step__title {
   font-size: 14px;
+  display: flex;
+  align-items: center;
 }
 
 /* 调整垂直步骤连接线样式 */
@@ -403,12 +373,12 @@ const generateDefaultPipeline = (): Pipeline[] =>[
   font-size: 14px;
 }
 
-/* 调整步骤标题样式 */
 .el-step__title {
   font-size: 14px;
   display: flex;
   align-items: center;
 }
+
 .pipeline-run-container {
   margin-top: 30px;
   padding: 20px;

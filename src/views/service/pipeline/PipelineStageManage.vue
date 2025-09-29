@@ -37,8 +37,8 @@
     <el-row :gutter="20">
       <!-- 左侧菜单 - 占30%宽度 -->
       <el-col :span="7">
-        <el-tree-v2
-          style="height: 400px; border: 2px solid #eee"
+        <el-scrollbar style="height: 100%;">
+        <el-tree
           :data="menuData"
           @node-click="handleJobClick"
           v-model:selectedJobKeys="selectedJobKeys"
@@ -57,7 +57,8 @@
               </div>
             </div>
           </template>
-        </el-tree-v2>
+        </el-tree>
+         </el-scrollbar>
       </el-col>
       
       <!-- 右侧内容 - 占70%宽度 -->
@@ -163,7 +164,7 @@ const initMenuData = () => {
     formData.value.stage_name = firstJob.stage_name || '';
     formData.value.stage_group_name = firstJob.stage_group_name || '';
     formData.value.parallel = firstJob.parallel || false;
-    currentJobConfig.value = JSON.parse(firstJob.pipeline_job.parameters || '{}');
+    currentJobConfig.value = JSON.parse(firstJob.parameters || '{}');
     // 若不存在stage_type，则为编辑状态
     if (!firstJob.stage_type) {
       isEditSelected.value = true;
@@ -221,7 +222,7 @@ function handleJobConfigUpdate(config: Record<string, any>) {
     
     Object.values(menuData).forEach((value) => {
         if (value.stage_order === currentJob.value?.stage_order) {
-          value.pipeline_job.parameters = JSON.stringify(config);
+          value.parameters = JSON.stringify(config);
         }
       });
   }
@@ -245,7 +246,7 @@ const handleConfirm = async (): Promise<void> => {
         //更新任务名称
         node.stage_name = formData.value.stage_name;
       }
-      const tmpConfig = JSON.parse(node.pipeline_job.parameters|| '{}')
+      const tmpConfig = JSON.parse(node.parameters|| '{}')
       // 如果配置中有selectedItems，则为每个环境生成一个阶段
       if (tmpConfig?.selectedItems){
           const baseStageName = node.stage_name || '';
@@ -258,9 +259,7 @@ const handleConfirm = async (): Promise<void> => {
             job_type: selectedJobType.value,
             stage_order: node.stage_order + index,
             parallel: node.parallel,
-            pipeline_job: {
-              parameters: JSON.stringify({...tmpConfig, selectedItems: [item]})
-            },
+            parameters: JSON.stringify({...tmpConfig, selectedItems: [item]}),
           }));
           jobSelectedItems = [...jobSelectedItems, ...stagesItems];
         } else {
@@ -274,9 +273,7 @@ const handleConfirm = async (): Promise<void> => {
             job_type: selectedJobType.value,
             stage_order: node.stage_order,
             parallel: node.parallel,
-            pipeline_job: {
-              parameters: JSON.stringify(tmpConfig)
-            },
+            parameters: JSON.stringify(tmpConfig),
           });
         }
     });
@@ -315,7 +312,7 @@ const handleJobClick = (data: any, node: any, e: MouseEvent): void => {
   nextTick(() => {
     selectedJobType.value = stageJob.job_type || '';
     formData.value.stage_name = stageJob.stage_name || '';
-    currentJobConfig.value = JSON.parse(stageJob.pipeline_job.parameters || '{}');
+    currentJobConfig.value = JSON.parse(stageJob.parameters || '{}');
   });
 };
 
@@ -353,9 +350,7 @@ const addJob = (job: Pipeline_stages): void => {
       parallel: false,
       stage_order: index + 1,
       job_type: '', 
-      pipeline_job: {
-        status: 'wait'
-      }
+      parameters: "",
     };
     
     menuData.splice(index + 1, 0, newJob);
@@ -392,9 +387,7 @@ const deleteJob = (node: Pipeline_stages): void => {
           stage_order: 0,
           stage_name: '新建任务',
           parallel: false,
-          pipeline_job: {
-            status: 'wait'
-          }
+          parameters: "",
         }];
       } else {
         updateStageOrders();

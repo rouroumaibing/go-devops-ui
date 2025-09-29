@@ -5,6 +5,7 @@
                 <div class="start-text">开始</div>
                 <div class="start-sopt"></div>
           </div>
+          
               <div class="start-line"></div>
             <!-- 使用v-for循环生成多个middle-container -->
             <div v-for="group in groupedStages" :key="group.stage_group_id" class="middle-container">
@@ -34,7 +35,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Pipeline_stages, Pipeline_job } from '@/types/pipeline';
+import { Pipeline_stages } from '@/types/pipeline';
 
 //接收参数
 const props = defineProps<{
@@ -67,7 +68,6 @@ const groupedStages = computed(() => {
     group.stages.sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
   });
 
-  // 4. 转换为数组并返回
   return Object.values(groupsMap);
 });
 

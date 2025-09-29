@@ -19,19 +19,32 @@ export interface Pipeline_stages {
   parallel: boolean;
   stage_order: number;
   job_type?: string;
+  parameters?: string;
   pipeline_id?: string;
   created_at?: string;
   updated_at?: string;
-  pipeline_job: Pipeline_job;
 }
 
-export interface Pipeline_job{
+export interface PipelineStageGroupJobs {
   id?: string;
-  pipeline_id?: string;
-  stage_id?: string;
+  name: string;
+  pipeline_id: string;
+  parallel: boolean;
+  stage_group_id: string;
+  stage_job_ids: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  pipeline_stage_jobs?: PipelineStageJobs[];
+}
+
+export interface PipelineStageJobs {
+  id?: string;
+  name: string;
+  pipeline_id: string;
+  stage_group_job_id: string;
   parameters?: string;
   status?: string;
   created_at?: string;
-  updated_at?: string;  
+  updated_at?: string;
 }
-

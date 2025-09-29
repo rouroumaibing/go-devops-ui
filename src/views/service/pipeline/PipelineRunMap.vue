@@ -32,14 +32,15 @@
             <template #description>
               <div v-if="group.stages && group.stages.length > 0" class="sub-steps-container">
                 <div v-for="subStage in group.stages" :key="subStage.id" class="sub-step-item">
-                  <span class="sub-step-status" :class="getStatusClass(subStage.pipeline_job?.status, index)">
-                    <el-icon v-if="subStage.pipeline_job?.status === 'success'">
+                  <!-- 修改状态获取方式 -->
+                  <span class="sub-step-status" :class="getSubStageStatusClass(group, subStage, index)">
+                    <el-icon v-if="getSubStageStatus(group, subStage) === 'success'">
                       <Check className="sub-step-icon" />
                     </el-icon>
-                    <el-icon v-else-if="subStage.pipeline_job?.status === 'failed'">
+                    <el-icon v-else-if="getSubStageStatus(group, subStage) === 'failed'">
                       <Close className="sub-step-icon" />
                     </el-icon>
-                    <el-icon v-else-if="subStage.pipeline_job?.status === 'processing'">
+                    <el-icon v-else-if="getSubStageStatus(group, subStage) === 'processing'">
                       <Loading className="sub-step-icon" />
                     </el-icon>
                     <el-icon v-else>
@@ -63,23 +64,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, defineProps, defineEmits } from 'vue';
+import { computed, ref, defineProps, defineEmits, onMounted } from 'vue';
 import { Check, Close, Loading, CirclePlus, Refresh } from '@element-plus/icons-vue';
-import { Pipeline_stages, Pipeline_job, Pipeline } from '@/types/pipeline';
+import { Pipeline_stages, Pipeline, PipelineStageGroupJobs, PipelineStageJobs } from '@/types/pipeline';
 import axios from '@/utils/axios';
 import { ElMessage } from 'element-plus';
 
+// 更新props定义
 const props = defineProps<{
   pipelineStages: Pipeline_stages[];
+  pipeline?: Pipeline;
 }>();
 
 const emit = defineEmits<{
   'update:pipelineStages': [stages: Pipeline_stages[]];
 }>();
 
+// 辅助计算属性和变量
 const pipelineStages = computed(() => props.pipelineStages);
 const isRefreshing = ref(false);
+const pipelineJobs = ref<PipelineStageGroupJobs[]>([]);
 
+// 获取pipeline_id
+const pipelineId = computed<string | null>(() => {
+  if (!pipelineStages.value || pipelineStages.value.length === 0) return null;
+  return pipelineStages.value[0].pipeline_id ?? null;
+});
+
+// 根据屏幕宽度调整步骤间距
 const spaceSize = computed(() => {
   const screenWidth = window.innerWidth;
   if (screenWidth < 768) return 40;
@@ -87,21 +99,31 @@ const spaceSize = computed(() => {
   return 160;
 });
 
+// 从API获取的pipeline stage group jobs数据
+const pipelineStageGroupJobs = computed(() => {
+  return pipelineJobs.value;
+});
+
+// 处理和排序stage groups
 const sortedStageGroups = computed(() => {
   const sortedByGroup = [...pipelineStages.value].sort((a, b) => (a.stage_group_order ?? 0) - (b.stage_group_order ?? 0));
 
   const groupsMap = sortedByGroup.reduce((acc, stage) => {
     if (stage.stage_group_id && !acc[stage.stage_group_id]) {
-      acc[stage.stage_group_id] = { 
+      acc[stage.stage_group_id] = {
         ...stage,
-        stages: [] as Pipeline_stages[]
+        stages: [] as Pipeline_stages[],
+        pipeline_stage_group_job: pipelineStageGroupJobs.value.find(job => job.stage_group_id === stage.stage_group_id)
       };
     }
     if (stage.stage_group_id) {
       acc[stage.stage_group_id].stages.push(stage);
     }
     return acc;
-  }, {} as Record<string, Pipeline_stages & { stages: Pipeline_stages[] }>);
+  }, {} as Record<string, Pipeline_stages & {
+    stages: Pipeline_stages[];
+    pipeline_stage_group_job?: PipelineStageGroupJobs;
+  }>);
 
   Object.values(groupsMap).forEach(group => {
     group.stages.sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
@@ -110,13 +132,13 @@ const sortedStageGroups = computed(() => {
   return Object.values(groupsMap);
 });
 
-// 基于实际状态计算当前活动步骤，而不是通过按钮控制
+// 计算当前活动步骤
 const activeStep = computed(() => {
   if (sortedStageGroups.value.length === 0) return 0;
   
   // 检查是否所有步骤都已完成
   const allGroupsCompleted = sortedStageGroups.value.every(group => {
-    return group.stages.every(stage => stage.pipeline_job?.status === 'success');
+    return group.pipeline_stage_group_job?.status === 'success';
   });
   
   if (allGroupsCompleted) {
@@ -128,20 +150,17 @@ const activeStep = computed(() => {
     const group = sortedStageGroups.value[i];
     
     // 检查是否有失败的步骤
-    const hasFailed = group.stages.some(stage => stage.pipeline_job?.status === 'failed');
-    if (hasFailed) {
+    if (group.pipeline_stage_group_job?.status === 'failed') {
       return i + 1; // 显示失败的步骤
     }
     
     // 检查是否有正在处理的步骤
-    const hasRunning = group.stages.some(stage => stage.pipeline_job?.status === 'processing');
-    if (hasRunning) {
+    if (group.pipeline_stage_group_job?.status === 'processing') {
       return i + 1; // 显示正在处理的步骤
     }
     
     // 检查是否有未完成的步骤
-    const allCompleted = group.stages.every(stage => stage.pipeline_job?.status === 'success');
-    if (!allCompleted) {
+    if (group.pipeline_stage_group_job?.status !== 'success') {
       return i + 1; // 显示第一个未完成的步骤
     }
   }
@@ -149,50 +168,21 @@ const activeStep = computed(() => {
   return 0; // 默认返回第一步
 });
 
-const pipelineId = computed<string | null>(() => {
-  if (!pipelineStages.value || pipelineStages.value.length === 0) return null;
-  return pipelineStages.value[0].pipeline_id ?? null;
-});
-
-const refreshPipelineData = async () => {
-  if (!pipelineId.value) {
-    ElMessage.error('无法刷新：未找到流水线ID');
-    return;
-  }
-
-  isRefreshing.value = true;
-
-  try {
-    const response = await axios.get<Pipeline>(`/api/pipeline/${pipelineId.value}`);
-    
-    if (!response.data || !response.data.pipeline_stages) {
-      throw new Error('获取流水线数据失败：返回数据格式不正确');
-    }
-    
-    emit('update:pipelineStages', response.data.pipeline_stages);
-    
-    ElMessage.success('流水线数据刷新成功');
-  } catch (error) {
-    console.error('刷新流水线数据失败:', error);
-    ElMessage.error(`刷新失败：${error instanceof Error ? error.message : '未知错误'}`);
-  } finally {
-    isRefreshing.value = false;
-  }
-};
-
+// 获取开始步骤信息
 const startStep = computed(() => {
   if (sortedStageGroups.value.length === 0) {
     return {
       title: '准备中',
-      status: 'wait'
+      status: 'init'
     };
   }
   
   // 检查是否有任何步骤已开始
   const hasStarted = sortedStageGroups.value.some(group => 
-    group.stages.some(stage => 
-      stage.pipeline_job?.status === 'success' || stage.pipeline_job?.status === 'processing' || stage.pipeline_job?.status === 'failed'
-    )
+    group.pipeline_stage_group_job?.status && 
+    (group.pipeline_stage_group_job.status === 'success' || 
+     group.pipeline_stage_group_job.status === 'processing' || 
+     group.pipeline_stage_group_job.status === 'failed')
   );
   
   const status = hasStarted ? 'success' : 'wait';
@@ -202,17 +192,18 @@ const startStep = computed(() => {
   };
 });
 
+// 获取结束步骤信息
 const endStep = computed(() => {
   if (sortedStageGroups.value.length === 0) {
     return {
       title: '完成',
-      status: 'wait'
+      status: 'init'
     };
   }
   
   // 检查是否所有步骤都已完成
   const allCompleted = sortedStageGroups.value.every(group => 
-    group.stages.every(stage => stage.pipeline_job?.status === 'success')
+    group.pipeline_stage_group_job?.status === 'success'
   );
   
   const status = allCompleted ? 'success' : 'wait';
@@ -223,293 +214,243 @@ const endStep = computed(() => {
   };
 });
 
-const getStepTitle = (group: Pipeline_stages & { stages: Pipeline_stages[] }) => {
+// 获取流水线job数据
+const fetchPipelineJobs = async () => {
+  if (!pipelineId.value) {
+    return;
+  }
+
+  try {
+    const response = await axios.get<PipelineStageGroupJobs[]>(`/api/pipeline/${pipelineId.value}/jobs`);
+    pipelineJobs.value = response.data || [];
+  } catch (error) {
+    console.error('获取流水线job数据失败:', error);
+  }
+};
+
+// 刷新流水线数据
+const refreshPipelineData = async () => {
+  if (!pipelineId.value) {
+    ElMessage.error('无法刷新：未找到流水线ID');
+    return;
+  }
+
+  isRefreshing.value = true;
+
+  try {
+    const pipelinePromise = axios.get<Pipeline>(`/api/pipeline/${pipelineId.value}`);
+    const jobsPromise = fetchPipelineJobs();
+    
+    // 并行获取数据
+    const pipelineResponse = await pipelinePromise;
+    await jobsPromise;
+    
+    if (!pipelineResponse.data || !pipelineResponse.data.pipeline_stages) {
+      throw new Error('获取流水线数据失败：返回数据格式不正确');
+    }
+    
+    emit('update:pipelineStages', pipelineResponse.data.pipeline_stages);
+    
+    ElMessage.success('流水线数据刷新成功');
+  } catch (error) {
+    console.error('刷新流水线数据失败:', error);
+    ElMessage.error(`刷新失败：${error instanceof Error ? error.message : '未知错误'}`);
+  } finally {
+    isRefreshing.value = false;
+  }
+};
+
+// 组件挂载时获取job数据
+onMounted(() => {
+  if (pipelineId.value) {
+    fetchPipelineJobs();
+  }
+});
+
+// 获取步骤标题
+const getStepTitle = (group: Pipeline_stages & {
+  stages: Pipeline_stages[];
+  pipeline_stage_group_job?: PipelineStageGroupJobs;
+}) => {
   return group.stage_group_name || '未命名阶段';
 };
 
-const getStepStatus = (group: Pipeline_stages & { stages: Pipeline_stages[] }, index: number) => {
+// 获取步骤状态
+const getStepStatus = (group: Pipeline_stages & {
+  stages: Pipeline_stages[];
+  pipeline_stage_group_job?: PipelineStageGroupJobs;
+}, index: number) => {
   const stepIndex = index + 1;
   const totalSteps = sortedStageGroups.value.length + 2;
   
-  if (activeStep.value > stepIndex) {
-    return 'success';
+  if (!group.pipeline_stage_group_job) {
+    return 'init';
   }
   
-  if (activeStep.value === stepIndex) {
-    return 'process';
+  // 优先根据任务组的实际状态来决定
+  switch (group.pipeline_stage_group_job.status) {
+    case 'failed':
+      return 'error';
+    case 'processing':
+      return 'process';
+    case 'success':
+      return 'success';
+    default:
+      return 'init';
   }
-  
-  if (activeStep.value >= totalSteps) {
-    return 'success';
-  }
-  
-  if (!group.stages || group.stages.length === 0) {
-    return 'wait';
-  }
-  
-  const hasFailed = group.stages.some(stage => stage.pipeline_job?.status === 'failed');
-  if (hasFailed) {
-    return 'error';
-  }
-  
-  const hasRunning = group.stages.some(stage => stage.pipeline_job?.status === 'processing');
-  if (hasRunning) {
-    return 'process';
-  }
-  
-  const allSuccess = group.stages.every(stage => stage.pipeline_job?.status === 'success');
-  if (allSuccess) {
-    return 'success';
-  }
-  
-  return 'wait';
 };
 
-const getStepDescription = (group: Pipeline_stages & { stages: Pipeline_stages[] }, index: number) => {
+// 获取子步骤状态
+const getSubStageStatus = (group: Pipeline_stages & {
+  stages: Pipeline_stages[];
+  pipeline_stage_group_job?: PipelineStageGroupJobs;
+}, subStage: Pipeline_stages) => {
+  // 根据pipeline_stage_group_job中的pipeline_stage_jobs查找对应的状态
+  if (!group.pipeline_stage_group_job?.pipeline_stage_jobs) {
+    return 'init';
+  }
+  
+  // 尝试通过名称匹配对应的stage job
+  const matchedJob = group.pipeline_stage_group_job.pipeline_stage_jobs.find(job => 
+    job.name === subStage.stage_name || job.name.includes(subStage.stage_name || '')
+  );
+  
+  return matchedJob?.status || 'init';
+};
+
+// 获取步骤描述
+const getStepDescription = (group: Pipeline_stages & {
+  stages: Pipeline_stages[];
+  pipeline_stage_group_job?: PipelineStageGroupJobs;
+}, index: number) => {
   const status = getStepStatus(group, index);
   const statusTextMap: Record<string, string> = {
     'success': '已完成',
     'error': '已失败',
     'process': '运行中',
-    'wait': '未运行'
+    'init': '未运行'
   };
   
   return statusTextMap[status] || '未知状态';
 };
 
-const getStatusClass = (status?: string, groupIndex?: number) => {
-  if (groupIndex !== undefined) {
-    const stepIndex = groupIndex + 1;
-    
-    if (activeStep.value > stepIndex) {
-      return 'status-success';
-    }
-    
-    if (activeStep.value < stepIndex) {
-      return 'status-wait';
-    }
-    const group = sortedStageGroups.value[groupIndex];
-    if (group && group.stages && group.stages.length > 0) {
-      const allSuccess = group.stages.every(stage => stage.pipeline_job?.status === 'success');
-      if (allSuccess) {
-        return 'status-success';
-      }
-      
-      const hasFailed = group.stages.some(stage => stage.pipeline_job?.status === 'failed');
-      if (hasFailed) {
-        return 'status-failed';
-      }
-    }
+// 获取子步骤状态对应的CSS类
+const getSubStageStatusClass = (group: Pipeline_stages & {
+  stages: Pipeline_stages[];
+  pipeline_stage_group_job?: PipelineStageGroupJobs;
+}, subStage: Pipeline_stages, groupIndex: number) => {
+  const stepIndex = groupIndex + 1;
+  
+  // 根据步骤位置确定基本状态
+  if (activeStep.value > stepIndex) {
+    return 'status-success';
   }
+  
+  if (activeStep.value < stepIndex) {
+    return 'status-init';
+  }
+  
+  // 获取子步骤的实际状态
+  const status = getSubStageStatus(group, subStage);
   
   const statusMap: Record<string, string> = {
     'success': 'status-success',
     'failed': 'status-failed',
     'processing': 'status-processing',
-    'wait': 'status-wait'
+    'init': 'status-init'
   };
-  return statusMap[status || 'wait'] || 'status-wait';
+  
+  return statusMap[status] || 'status-init';
 };
 </script>
 
 <style scoped>
 .pipeline-run-map-container {
   padding: 20px;
-  width: 100%;
-  max-width: none;
-  margin: 0;
 }
 
 .steps-container {
-  margin: 60px 0;
-  padding: 0 20px;
-  width: 100%;
-  justify-content: center;
-  align-items: center;
+  min-height: 200px;
 }
 
 .sub-steps-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  min-width: 150px;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
-}
-.pipeline-header {
-  margin-bottom: 30px;
-}
-
-.pipeline-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.pipeline-info {
-  display: flex;
-  gap: 20px;
-  font-size: 14px;
-  color: #666;
-}
-
-.steps-container {
-  margin: 60px 0;
-  padding: 0 20px;
-}
-
-.sub-steps-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  min-width: 150px;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
-}
-
-.el-step {
-  position: relative;
+  margin-top: 10px;
 }
 
 .sub-step-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: #666;
-  white-space: nowrap;
-  padding: 2px 0;
-  transition: all 0.3s ease;
-}
-
-.status-success .sub-step-name {
-  color: #67c23a;
-  font-weight: 500;
-}
-
-.status-wait .sub-step-name {
-  color: #c0c4cc;
-  opacity: 0.7;
-}
-
-.sub-step-item:hover {
-  transform: translateX(2px);
-}
-.sub-step-name {
-  word-break: keep-all;
+  margin-bottom: 8px;
+  padding-left: 10px;
 }
 
 .sub-step-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
   border-radius: 50%;
-  background-color: #fff;
-  border: 1px solid;
-  transition: all 0.3s ease;
+  background-color: #f0f0f0;
 }
 
 .sub-step-icon {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
+}
+
+.sub-step-name {
+  font-size: 12px;
+  color: #666;
 }
 
 .status-success {
+  background-color: #f0f9eb;
   color: #67c23a;
 }
 
 .status-failed {
+  background-color: #fef0f0;
   color: #f56c6c;
 }
 
 .status-processing {
-  color: #409eff;
-}
-
-.status-wait {
-  color: #c0c4cc;
-}
-
-.sub-step-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background-color: #fff;
-  border: 1px solid;
-  transition: all 0.3s ease;
-}
-
-.status-success .sub-step-status {
-  color: #67c23a;
-  border-color: #67c23a;
   background-color: #f0f9eb;
+  color: #67c23a;
+  animation: pulse 1.5s infinite;
 }
 
-.status-failed .sub-step-status {
-  color: #f56c6c;
-  border-color: #f56c6c;
-  background-color: #fef0f0;
+.status-init {
+  background-color: #f5f7fa;
+  color: #909399;
 }
 
-.status-processing .sub-step-status {
-  color: #409eff;
-  border-color: #409eff;
-  background-color: #ecf5ff;
-}
-
-.status-wait .sub-step-status {
-  color: #c0c4cc;
-  border-color: #c0c4cc;
-  background-color: #f4f4f5;
-}
-
-.sub-step-icon {
-  width: 12px;
-  height: 12px;
-  animation: icon-appear 0.3s ease;
-}
-
-@keyframes icon-appear {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
+/* 为processing状态添加动态效果 */
+@keyframes pulse {
+  0% {
     transform: scale(1);
-    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
+/* 响应式调整 */
 @media (max-width: 768px) {
-  .pipeline-info {
-    flex-direction: column;
-    gap: 5px;
+  .pipeline-run-map-container {
+    padding: 10px;
   }
   
-  .steps-container {
-    margin: 20px 0;
+  .sub-step-item {
+    padding-left: 5px;
+  }
+  
+  .sub-step-name {
+    font-size: 11px;
   }
 }
 </style>
