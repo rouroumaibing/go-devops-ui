@@ -54,7 +54,7 @@
       </div>
 
       <div class="pipeline-run-container">
-        <PipelineMap  
+        <PipelineRunMap  
         :pipeline-stages="pipelineGroupData"/>
       </div>
   </div>
@@ -67,7 +67,7 @@ import { FormInstance, FormRules, ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Operation, Edit, CopyDocument, Delete, DArrowLeft, DArrowRight } from '@element-plus/icons-vue';
 
 import PipelineStageManage from './PipelineStageManage.vue';
-import PipelineMap from './PipelineMap.vue';
+import PipelineRunMap from './PipelineRunMap.vue';
 import { Pipeline, Pipeline_stages } from '@/types/pipeline';
 
 const emit = defineEmits(['cancel', 'success']);

@@ -45,7 +45,7 @@
         </el-row>
 
         <div class="pipeline-run-container">
-          <PipelineMap 
+          <PipelineRunMap 
             v-if="selectedPipelineId && pipelineList.length > 0"
             :pipeline-stages="pipelineList.find(p => p.id === selectedPipelineId)?.pipeline_stages ?? []"
           />
@@ -77,8 +77,8 @@ import { ElMessage } from 'element-plus';
 import { useRoute } from 'vue-router';
 
 import PipelineCreate from './PipelineCreate.vue';
-//import PipelineMap from './PipelineMap.vue';
-import PipelineMap from './PipelineRunMap.vue';
+import PipelineRunMap from './PipelineRunMap.vue';
+
 
 import { Pipeline } from '@/types/pipeline';
 
@@ -159,13 +159,12 @@ const handleEdit = (pipeline: Pipeline) => {
 
 const handleRun = async (pipeline: Pipeline) => {
   try {
-    const response = await axios.post(`/api/pipeline/${pipeline.id}/job`, pipeline);
+    const response = await axios.post(`/api/pipeline/${pipeline.id}/jobs`);
     
     // Show success message
     ElMessage.success('流水线已开始运行');
     
   } catch (error) {
-    console.error('运行流水线失败:', error);
     ElMessage.error('运行流水线失败，请重试');
   }
 };
